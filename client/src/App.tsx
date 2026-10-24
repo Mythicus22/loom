@@ -335,7 +335,7 @@ export function App() {
           {!isMentorOpen && (
             <button
               onClick={() => setIsMentorOpen(true)}
-              className="fixed bottom-6 right-6 z-40 p-3.5 rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-600 to-cyan-500 hover:scale-105 text-white shadow-2xl shadow-violet-500/30 border border-violet-400/40 flex items-center gap-2.5 transition-all cursor-pointer group animate-bounce-subtle"
+              className="mentor-lightbeam fixed bottom-6 right-6 z-40 p-3.5 rounded-2xl text-white flex items-center gap-2.5 cursor-pointer group"
               title="Open AI Learning Mentor"
             >
               <div className="relative">
