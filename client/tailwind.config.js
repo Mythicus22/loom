@@ -6,12 +6,12 @@ export default {
     extend: {
       colors: {
         dark: {
-          bg: '#08090D',
-          panel: '#11131A',
-          card: '#161923',
-          border: '#232736',
-          borderSubtle: '#1B1E2B',
-          hover: '#1D2130',
+          bg: '#09090B',
+          panel: '#121214',
+          card: '#171719',
+          border: '#29292C',
+          borderSubtle: '#202023',
+          hover: '#202023',
         },
         violet: {
           accent: '#8B5CF6',
@@ -36,10 +36,10 @@ export default {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
       boxShadow: {
-        'glow-violet': '0 0 25px -4px rgba(139, 92, 246, 0.45)',
-        'glow-cyan': '0 0 25px -4px rgba(34, 211, 238, 0.45)',
-        'glow-emerald': '0 0 25px -4px rgba(16, 185, 129, 0.45)',
-        'glow-node': '0 0 20px 2px rgba(139, 92, 246, 0.3)',
+        'glow-violet': '0 0 25px -4px rgba(235, 235, 235, 0.08)',
+        'glow-cyan': '0 0 25px -4px rgba(235, 235, 235, 0.07)',
+        'glow-emerald': '0 0 25px -4px rgba(52, 211, 153, 0.16)',
+        'glow-node': '0 0 20px 2px rgba(235, 235, 235, 0.08)',
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',

@@ -436,7 +436,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
                   markerHeight="6" 
                   orient="auto-start-reverse"
                 >
-                  <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#8B5CF6" />
+                  <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#DADADC" />
                 </marker>
 
                 <marker 
@@ -460,17 +460,17 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
                   markerHeight="6" 
                   orient="auto-start-reverse"
                 >
-                  <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#A855F7" />
+                  <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#8B8B90" />
                 </marker>
 
                 {/* Linear Gradients for Paths */}
                 <linearGradient id="activeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                   <stop offset="0%" stopColor="#10B981" />
-                  <stop offset="100%" stopColor="#8B5CF6" />
+                  <stop offset="100%" stopColor="#B8B8BC" />
                 </linearGradient>
                 <linearGradient id="completedGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                   <stop offset="0%" stopColor="#10B981" />
-                  <stop offset="100%" stopColor="#22D3EE" />
+                  <stop offset="100%" stopColor="#83C9A9" />
                 </linearGradient>
               </defs>
 
@@ -484,7 +484,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
                       line.isCompleted
                         ? 'rgba(16, 185, 129, 0.35)'
                         : line.isActive
-                        ? 'rgba(139, 92, 246, 0.45)'
+                        ? 'rgba(237, 237, 237, 0.18)'
                         : 'rgba(255, 255, 255, 0.04)'
                     }
                     strokeWidth={line.isActive ? 5 : 3.5}
@@ -541,9 +541,9 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
                         : ''
                     } ${
                       isCurrent
-                        ? 'bg-gradient-to-b from-[#1E1B4B] via-[#151724] to-[#0E1017] border-2 border-violet-accent shadow-glow-violet active-quest-pulse'
+                        ? 'bg-gradient-to-b from-[#28282B] via-[#171719] to-[#101012] border-2 border-violet-accent shadow-glow-violet active-quest-pulse'
                         : isCompleted
-                        ? 'bg-gradient-to-b from-[#064E3B]/40 via-[#151724] to-[#0E1017] border border-emerald-500/50 shadow-glow-emerald/20'
+                        ? 'bg-gradient-to-b from-[#064E3B]/30 via-[#171719] to-[#101012] border border-emerald-500/40 shadow-glow-emerald/20'
                         : isLocked
                         ? 'bg-dark-panel/80 border border-dark-border opacity-70 grayscale hover:grayscale-0'
                         : 'bg-dark-card border border-dark-border hover:border-violet-500/50 shadow-lg'

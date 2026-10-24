@@ -240,7 +240,7 @@ export function App() {
   };
 
   return (
-    <div className={`min-h-screen bg-dark-bg text-slate-100 flex flex-col font-sans ${currentTab === 'home' ? 'home-theme' : ''}`}>
+    <div className={`app-theme min-h-screen bg-dark-bg text-slate-100 flex flex-col font-sans ${currentTab === 'home' ? 'home-theme' : ''}`}>
       
       {/* Upgraded Clean Navbar */}
       <Navbar

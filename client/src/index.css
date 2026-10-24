@@ -7,11 +7,11 @@
 }
 
 body {
-  background-color: #08090D;
-  background-image: 
-    radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.08) 0%, transparent 60%),
-    radial-gradient(circle at 100% 50%, rgba(34, 211, 238, 0.05) 0%, transparent 50%),
-    radial-gradient(circle at 0% 100%, rgba(139, 92, 246, 0.04) 0%, transparent 40%);
+  background-color: #09090B;
+  background-image:
+    radial-gradient(circle at 50% 0%, rgba(235, 235, 235, 0.018) 0%, transparent 60%),
+    radial-gradient(circle at 100% 50%, rgba(235, 235, 235, 0.012) 0%, transparent 50%),
+    radial-gradient(circle at 0% 100%, rgba(235, 235, 235, 0.01) 0%, transparent 40%);
   background-attachment: fixed;
   font-family: 'Inter', system-ui, sans-serif;
 }
@@ -23,67 +23,67 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #08090D;
+  background: #09090B;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #232736;
+  background: #303034;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #8B5CF6;
+  background: #55555A;
 }
 
 /* Glassmorphism and UI layers */
 .glass-panel {
-  background: rgba(17, 19, 26, 0.75);
+  background: rgba(18, 18, 20, 0.82);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .glass-card {
-  background: rgba(22, 25, 35, 0.65);
+  background: rgba(23, 23, 25, 0.72);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .glass-card:hover {
-  background: rgba(26, 30, 42, 0.85);
-  border-color: rgba(139, 92, 246, 0.35);
+  background: rgba(32, 32, 35, 0.9);
+  border-color: rgba(235, 235, 235, 0.16);
 }
 
 /* Neon Borders */
 .border-violet-glow {
-  border-color: #8B5CF6;
-  box-shadow: 0 0 15px rgba(139, 92, 246, 0.35);
+  border-color: rgba(235, 235, 235, 0.28);
+  box-shadow: 0 0 15px rgba(235, 235, 235, 0.08);
 }
 
 .border-cyan-glow {
-  border-color: #22D3EE;
-  box-shadow: 0 0 15px rgba(34, 211, 238, 0.35);
+  border-color: rgba(235, 235, 235, 0.24);
+  box-shadow: 0 0 15px rgba(235, 235, 235, 0.07);
 }
 
 .border-emerald-glow {
-  border-color: #10B981;
-  box-shadow: 0 0 15px rgba(16, 185, 129, 0.35);
+  border-color: rgba(52, 211, 153, 0.4);
+  box-shadow: 0 0 15px rgba(52, 211, 153, 0.16);
 }
 
 /* Pulse animation for active quest node */
 @keyframes quest-ping {
   0% {
     transform: scale(0.96);
-    box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.7);
+    box-shadow: 0 0 0 0 rgba(235, 235, 235, 0.25);
   }
   70% {
     transform: scale(1.04);
-    box-shadow: 0 0 0 14px rgba(139, 92, 246, 0);
+    box-shadow: 0 0 0 14px rgba(235, 235, 235, 0);
   }
   100% {
     transform: scale(0.96);
-    box-shadow: 0 0 0 0 rgba(139, 92, 246, 0);
+    box-shadow: 0 0 0 0 rgba(235, 235, 235, 0);
   }
 }
 
@@ -1031,4 +1031,170 @@ body {
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
   }
+}
+
+.app-theme:not(.home-theme) {
+  color: #EDEDED;
+}
+
+.app-theme:not(.home-theme) .text-white,
+.app-theme:not(.home-theme) [class*="text-violet-"],
+.app-theme:not(.home-theme) [class*="text-indigo-"],
+.app-theme:not(.home-theme) [class*="text-cyan-"],
+.app-theme:not(.home-theme) [class*="text-purple-"],
+.app-theme:not(.home-theme) [class*="text-violet-accent"],
+.app-theme:not(.home-theme) [class*="text-cyan-accent"] {
+  color: rgba(237, 237, 237, .82) !important;
+}
+
+.app-theme:not(.home-theme) [class*="text-slate-100"] {
+  color: #EDEDED !important;
+}
+
+.app-theme:not(.home-theme) [class*="text-slate-200"] {
+  color: #D4D4D6 !important;
+}
+
+.app-theme:not(.home-theme) [class*="text-slate-300"] {
+  color: #B8B8BC !important;
+}
+
+.app-theme:not(.home-theme) [class*="text-slate-400"] {
+  color: #96969B !important;
+}
+
+.app-theme:not(.home-theme) [class*="text-slate-500"],
+.app-theme:not(.home-theme) [class*="text-slate-600"] {
+  color: #737378 !important;
+}
+
+.app-theme:not(.home-theme) [class*="text-emerald-"] {
+  color: #83C9A9 !important;
+}
+
+.app-theme:not(.home-theme) [class*="text-amber-"] {
+  color: #C8B27D !important;
+}
+
+.app-theme:not(.home-theme) [class*="text-rose-"],
+.app-theme:not(.home-theme) [class*="text-red-"] {
+  color: #D99C9C !important;
+}
+
+.app-theme:not(.home-theme) [class*="bg-violet-950"],
+.app-theme:not(.home-theme) [class*="bg-indigo-950"],
+.app-theme:not(.home-theme) [class*="bg-cyan-950"],
+.app-theme:not(.home-theme) [class*="bg-purple-950"],
+.app-theme:not(.home-theme) [class*="bg-violet-accent"],
+.app-theme:not(.home-theme) [class*="bg-cyan-accent"],
+.app-theme:not(.home-theme) [class*="bg-[#1E1B4B]"] {
+  background-color: rgba(237, 237, 237, .045) !important;
+}
+
+.app-theme:not(.home-theme) [class*="bg-violet-600"],
+.app-theme:not(.home-theme) [class*="bg-indigo-600"],
+.app-theme:not(.home-theme) [class*="bg-cyan-600"] {
+  background-color: rgba(237, 237, 237, .1) !important;
+}
+
+.app-theme:not(.home-theme) [class*="bg-slate-"] {
+  background-color: rgba(237, 237, 237, .07) !important;
+}
+
+.app-theme:not(.home-theme) [class*="bg-emerald-500"] {
+  background-color: rgba(52, 211, 153, .22) !important;
+}
+
+.app-theme:not(.home-theme) [class*="border-slate-"] {
+  border-color: rgba(237, 237, 237, .14) !important;
+}
+
+.app-theme:not(.home-theme) button[class*="bg-violet-600"],
+.app-theme:not(.home-theme) button[class*="bg-indigo-600"],
+.app-theme:not(.home-theme) button[class*="bg-cyan-600"],
+.app-theme:not(.home-theme) button[class*="from-violet-600"],
+.app-theme:not(.home-theme) button[class*="from-indigo-600"] {
+  color: #111113 !important;
+  border-color: rgba(237, 237, 237, .72) !important;
+  background-color: #EDEDED !important;
+  background-image: linear-gradient(112deg, #EDEDED, #D3D3D5) !important;
+  box-shadow: 0 4px 18px rgba(237, 237, 237, .08) !important;
+}
+
+.app-theme:not(.home-theme) button[class*="hover:bg-violet-"]:hover,
+.app-theme:not(.home-theme) button[class*="hover:bg-indigo-"]:hover,
+.app-theme:not(.home-theme) button[class*="hover:bg-cyan-"]:hover {
+  color: #111113 !important;
+  background-color: #FFFFFF !important;
+  background-image: linear-gradient(112deg, #FFFFFF, #E4E4E6) !important;
+}
+
+.app-theme:not(.home-theme) [class*="hover:bg-violet-"]:hover,
+.app-theme:not(.home-theme) [class*="hover:bg-indigo-"]:hover,
+.app-theme:not(.home-theme) [class*="hover:bg-cyan-"]:hover {
+  background-color: rgba(237, 237, 237, .075) !important;
+}
+
+.app-theme:not(.home-theme) [class*="border-violet-"],
+.app-theme:not(.home-theme) [class*="border-indigo-"],
+.app-theme:not(.home-theme) [class*="border-cyan-"],
+.app-theme:not(.home-theme) [class*="border-violet-accent"],
+.app-theme:not(.home-theme) [class*="border-cyan-accent"] {
+  border-color: rgba(237, 237, 237, .13) !important;
+}
+
+.app-theme:not(.home-theme) [class*="hover:border-violet-"]:hover,
+.app-theme:not(.home-theme) [class*="hover:border-indigo-"]:hover,
+.app-theme:not(.home-theme) [class*="hover:border-cyan-"]:hover {
+  border-color: rgba(237, 237, 237, .3) !important;
+}
+
+.app-theme:not(.home-theme) [class*="shadow-glow-violet"],
+.app-theme:not(.home-theme) [class*="shadow-glow-cyan"] {
+  box-shadow: 0 0 20px rgba(237, 237, 237, .075) !important;
+}
+
+.app-theme:not(.home-theme) [class*="from-violet-950"],
+.app-theme:not(.home-theme) [class*="from-indigo-950"] {
+  background-image: linear-gradient(112deg, rgba(27, 27, 29, .96), rgba(17, 17, 19, .96)) !important;
+}
+
+.app-theme:not(.home-theme) [class*="from-violet-600"],
+.app-theme:not(.home-theme) [class*="from-indigo-600"],
+.app-theme:not(.home-theme) [class*="from-cyan-600"] {
+  background-image: linear-gradient(112deg, #E8E8E8, #BDBDC0) !important;
+}
+
+.app-theme:not(.home-theme) #arrow-active path {
+  fill: #DADADC !important;
+}
+
+.app-theme:not(.home-theme) #arrow-optional path {
+  fill: #8B8B90 !important;
+}
+
+.app-theme:not(.home-theme) #activeGradient stop:last-child {
+  stop-color: #B8B8BC !important;
+}
+
+.app-theme:not(.home-theme) #completedGradient stop:last-child {
+  stop-color: #83C9A9 !important;
+}
+
+.app-theme:not(.home-theme) input:focus,
+.app-theme:not(.home-theme) select:focus,
+.app-theme:not(.home-theme) textarea:focus,
+.app-theme:not(.home-theme) [class*="focus-within:border-violet-"]:focus-within {
+  border-color: rgba(237, 237, 237, .4) !important;
+  box-shadow: 0 0 0 2px rgba(237, 237, 237, .045);
+}
+
+.app-theme:not(.home-theme) input[type="checkbox"],
+.app-theme:not(.home-theme) input[type="radio"],
+.app-theme:not(.home-theme) input[type="range"] {
+  accent-color: #DADADC;
+}
+
+.app-theme:not(.home-theme) .active-quest-pulse {
+  animation-name: quest-ping;
 }

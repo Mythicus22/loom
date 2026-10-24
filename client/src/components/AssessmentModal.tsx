@@ -70,7 +70,7 @@ export const AssessmentModal: React.FC<AssessmentModalProps> = ({
           particleCount: 80,
           spread: 70,
           origin: { y: 0.6 },
-          colors: ['#8B5CF6', '#22D3EE', '#10B981', '#F59E0B']
+          colors: ['#DADADC', '#A7B8C0', '#34D399', '#C8B27D']
         });
       }
     } catch (err) {
