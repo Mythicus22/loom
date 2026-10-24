@@ -230,7 +230,7 @@ body {
 .home-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
-  gap: clamp(24px, 4vw, 64px);
+  gap: 24px;
   width: min(1440px, 100%);
   min-height: calc(100vh - 10rem);
   margin: 0 auto;
@@ -282,6 +282,9 @@ body {
 .home-popular {
   position: sticky;
   top: 88px;
+  align-self: start;
+  width: 100%;
+  margin: 0;
   padding: 22px;
   border: 1px solid rgba(235, 235, 235, .085);
   border-radius: 22px;
@@ -307,6 +310,7 @@ body {
 
 .home-popular-list {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   margin-top: 20px;
 }
@@ -978,13 +982,6 @@ body {
   color: #EBEBEB;
 }
 
-@media (max-width: 900px) {
-  .home-layout {
-    grid-template-columns: minmax(0, 1fr) minmax(250px, 300px);
-    gap: 20px;
-  }
-}
-
 @media (max-width: 720px) {
   .home-page {
     padding: 20px 16px 32px;
@@ -997,13 +994,26 @@ body {
 
   .home-popular {
     position: static;
-    grid-row: 2;
+    width: 100%;
+    margin: 0;
     padding: 18px;
   }
 
   .mo-root {
     height: 440px;
     min-height: 440px;
+  }
+
+  @media (min-width: 721px) and (max-width: 980px) {
+    .home-layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .home-popular {
+      position: static;
+      width: min(100%, 340px);
+      margin-left: auto;
+    }
   }
 
   .mo-reset {
