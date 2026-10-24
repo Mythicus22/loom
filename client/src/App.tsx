@@ -3,7 +3,9 @@ import { Navbar } from './components/Navbar';
 import { AIHomeChat } from './components/AIHomeChat';
 import { RoadmapViewPage } from './pages/RoadmapViewPage';
 import { DashboardPage } from './pages/DashboardPage';
-import { MasterRoadmap, UserPlan, UserProgress, LearnerProfile, LevelInfo } from './types';
+import { MentorDrawer } from './components/MentorDrawer';
+import { MasterRoadmap, UserPlan, UserProgress, LearnerProfile, LevelInfo, RoadmapNode } from './types';
+import { Bot, MessageSquare } from 'lucide-react';
 import { 
   fetchActivePlan, 
   matchOrCreateRoadmap, 
@@ -19,6 +21,8 @@ export function App() {
   const [currentTab, setCurrentTab] = useState<'home' | 'roadmap' | 'dashboard'>('home');
   const [activeRoadmap, setActiveRoadmap] = useState<MasterRoadmap | null>(null);
   const [activePlan, setActivePlan] = useState<UserPlan | null>(null);
+  const [isMentorOpen, setIsMentorOpen] = useState(false);
+  const [mentorQuest, setMentorQuest] = useState<RoadmapNode | null>(null);
   const [progress, setProgress] = useState<UserProgress>({
     userId: 'default_hero',
     planId: 'default',
@@ -290,6 +294,12 @@ export function App() {
             onSubmitAssessment={handleSubmitAssessment}
             onToggleBookmark={handleToggleBookmark}
             onOpenNewGoal={() => setCurrentTab('home')}
+            isMentorOpen={isMentorOpen}
+            onToggleMentor={() => setIsMentorOpen(prev => !prev)}
+            onOpenMentorWithQuest={node => {
+              setMentorQuest(node);
+              setIsMentorOpen(true);
+            }}
           />
         )}
 
@@ -308,6 +318,40 @@ export function App() {
           />
         )}
       </main>
+
+      {/* Floating AI Mentor Chatbot (on all pages except landing page 'home') */}
+      {currentTab !== 'home' && (
+        <>
+          {/* Floating Trigger Button (when closed) */}
+          {!isMentorOpen && (
+            <button
+              onClick={() => setIsMentorOpen(true)}
+              className="fixed bottom-6 right-6 z-40 p-3.5 rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-600 to-cyan-500 hover:scale-105 text-white shadow-2xl shadow-violet-500/30 border border-violet-400/40 flex items-center gap-2.5 transition-all cursor-pointer group animate-bounce-subtle"
+              title="Open AI Learning Mentor"
+            >
+              <div className="relative">
+                <Bot className="w-5 h-5 text-cyan-accent group-hover:rotate-12 transition-transform" />
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-dark-bg animate-pulse"></span>
+              </div>
+              <span className="text-xs font-bold tracking-tight pr-1 hidden sm:inline">Ask AI Mentor</span>
+            </button>
+          )}
+
+          {/* Floating Dialogue Box (bottom right) */}
+          <MentorDrawer
+            isOpen={isMentorOpen}
+            onClose={() => setIsMentorOpen(false)}
+            currentQuest={
+              mentorQuest ||
+              activeRoadmap?.nodes.find(n => n.id === activePlan?.currentQuestId) ||
+              activeRoadmap?.nodes[0] ||
+              null
+            }
+            plan={activePlan}
+            completedNodeIds={progress.completedNodeIds || []}
+          />
+        </>
+      )}
 
     </div>
   );

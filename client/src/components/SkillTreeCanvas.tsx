@@ -53,26 +53,37 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
     hasMoved: boolean;
   } | null>(null);
 
-  // Initialize or reset node positions when roadmap changes
-  useEffect(() => {
-    const initialPos: Record<string, { x: number; y: number }> = {};
-    roadmap.nodes.forEach((n, idx) => {
-      // Default to node.position or compute nice staggered fallback
-      initialPos[n.id] = {
-        x: n.position?.x ?? (100 + (idx % 4) * 280),
-        y: n.position?.y ?? (120 + Math.floor(idx / 4) * 160),
-      };
-    });
-    setNodePositions(initialPos);
-  }, [roadmap.id, roadmap.nodes]);
+  // Initialize or reset node positions when roadmap changes with comfortable spacious spacing
+  const computeSpacedPositions = useCallback(() => {
+    const posMap: Record<string, { x: number; y: number }> = {};
+    const SPACING_X_RATIO = 1.45; // Expand horizontal spacing from legacy 220px to ~320px
+    const SPACING_Y_RATIO = 1.35; // Expand vertical branch spacing
 
-  // Reset positions to default
-  const handleResetPositions = () => {
-    const defaultPos: Record<string, { x: number; y: number }> = {};
-    roadmap.nodes.forEach(n => {
-      defaultPos[n.id] = { x: n.position.x, y: n.position.y };
+    roadmap.nodes.forEach((n, idx) => {
+      if (n.position && typeof n.position.x === 'number' && typeof n.position.y === 'number') {
+        // Generously space out preloaded node coordinates
+        posMap[n.id] = {
+          x: Math.round(100 + (n.position.x - 100) * SPACING_X_RATIO),
+          y: Math.round(120 + (n.position.y - 120) * SPACING_Y_RATIO),
+        };
+      } else {
+        // Fallback staggered layout with generous padding
+        posMap[n.id] = {
+          x: 100 + (idx % 3) * 380,
+          y: 120 + Math.floor(idx / 3) * 220,
+        };
+      }
     });
-    setNodePositions(defaultPos);
+    return posMap;
+  }, [roadmap.nodes]);
+
+  useEffect(() => {
+    setNodePositions(computeSpacedPositions());
+  }, [roadmap.id, computeSpacedPositions]);
+
+  // Reset positions to spacious default
+  const handleResetPositions = () => {
+    setNodePositions(computeSpacedPositions());
     setZoom(1);
   };
 
@@ -403,8 +414,8 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
             style={{ 
               transform: `scale(${zoom})`, 
               transformOrigin: '0 0',
-              minWidth: '1800px',
-              minHeight: '800px',
+              minWidth: '2800px',
+              minHeight: '1100px',
             }}
             className="relative"
           >

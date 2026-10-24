@@ -42,15 +42,16 @@ app.get('*', (req, res, next) => {
 
 async function seedMasterRoadmapsIfEmpty() {
   try {
-    const count = await MasterRoadmap.countDocuments();
-    if (count === 0) {
-      console.log(`[Seed] Database empty. Seeding ${preloadedRoadmaps.length} comprehensive master roadmaps...`);
-      await MasterRoadmap.insertMany(preloadedRoadmaps);
-      console.log('[Seed] Master roadmaps successfully preloaded:');
-      preloadedRoadmaps.forEach(rm => console.log(`  ✓ ${rm.canonicalGoal} (${rm.domain}, ${rm.nodes.length} nodes)`));
-    } else {
-      console.log(`[Seed] Master roadmaps already populated (${count} present).`);
+    for (const rm of preloadedRoadmaps) {
+      await MasterRoadmap.findOneAndUpdate(
+        { id: rm.id },
+        { $set: rm },
+        { upsert: true, new: true }
+      );
     }
+    const count = await MasterRoadmap.countDocuments();
+    console.log(`[Seed] Master roadmaps synced successfully (${count} total in database).`);
+    preloadedRoadmaps.forEach(rm => console.log(`  ✓ ${rm.canonicalGoal} (${rm.domain}, ${rm.nodes.length} nodes)`));
   } catch (err) {
     console.error('[Seed] Error checking or seeding roadmaps:', err);
   }

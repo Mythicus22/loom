@@ -232,14 +232,114 @@ function generateStructuredDomainRoadmap(rawGoal) {
     },
     {
       id: `${id}-n4`,
+      stageId: `${id}-s2`,
+      title: `${goalClean}: Performance Optimization & Telemetry`,
+      subtitle: 'Profiling memory, caching strategies, and telemetry monitoring',
+      level: 4,
+      xp: 250,
+      isOptional: false,
+      position: { x: 540, y: 260 },
+      prerequisites: [`${id}-n3`],
+      description: `Benchmark and optimize ${goalClean} workloads. Implement structured telemetry, distributed tracing, and cache invalidation patterns.`,
+      whyItMatters: 'High-scale production systems require proactive performance profiling and deep observability to prevent downtime.',
+      whatYouWillLearn: [
+        'Memory profiling and heap allocation analysis',
+        'Implementing OpenTelemetry metrics and distributed tracing',
+        'Multi-tiered caching and cache coherence strategies'
+      ],
+      estimatedMinutes: 130,
+      resources: [
+        {
+          id: `res-${id}-perf`,
+          title: 'Systems Performance and Observability Engineering',
+          url: 'https://opentelemetry.io/docs/',
+          source: 'OpenTelemetry',
+          type: 'documentation',
+          duration: '50 mins',
+          difficulty: 'Intermediate',
+          description: 'Instrumentation patterns for tracing and performance monitoring.'
+        }
+      ],
+      practicalTask: {
+        title: 'Benchmark and Profile Application Latency',
+        instructions: 'Profile a critical bottleneck function, reduce CPU/memory cycle count by 30%, and log Prometheus metrics.',
+        acceptanceCriteria: ['Provides benchmark comparisons', 'Emits valid metric counters'],
+        starterCode: '// Benchmarking test harness\nfunction profileRun() {}',
+        deliverableType: 'code'
+      },
+      assessment: {
+        type: 'quiz',
+        questions: [
+          {
+            id: `q-${id}-perf`,
+            question: 'Why is distributed tracing essential in modern microservices/systems architecture?',
+            options: ['To replace unit tests', 'It visualizes exact call sequences and latency bottlenecks across distributed component boundaries', 'It minimizes disk space', 'It speeds up network switches'],
+            correctIndex: 1,
+            explanation: 'Distributed tracing correlates request spans across multiple processes to isolate the root cause of latency.'
+          }
+        ]
+      }
+    },
+    {
+      id: `${id}-n5`,
+      stageId: `${id}-s3`,
+      title: `${goalClean}: Security Hardening & CI/CD Pipelines`,
+      subtitle: 'Static analysis, automated vulnerability scanning, and deploy hooks',
+      level: 4,
+      xp: 280,
+      isOptional: false,
+      position: { x: 760, y: 260 },
+      prerequisites: [`${id}-n4`],
+      description: `Harden ${goalClean} against security vulnerabilities, configure secret rotation, automated linting pipelines, and automated container builds.`,
+      whyItMatters: 'Security cannot be an afterthought. Automated CI/CD gates guarantee that only compliant, tested code reaches users.',
+      whatYouWillLearn: [
+        'Threat modeling and defense in depth',
+        'Configuring GitHub Actions for automated lint, test, and SAST scans',
+        'Secure secrets injection and dependency auditing'
+      ],
+      estimatedMinutes: 140,
+      resources: [
+        {
+          id: `res-${id}-sec`,
+          title: 'OWASP Software Security & CI/CD Verification Standards',
+          url: 'https://owasp.org/',
+          source: 'OWASP Foundation',
+          type: 'documentation',
+          duration: '60 mins',
+          difficulty: 'Advanced',
+          description: 'Essential security guidelines and supply-chain vulnerability defenses.'
+        }
+      ],
+      practicalTask: {
+        title: 'Configure Automated Security & Testing Pipeline',
+        instructions: 'Set up an automated workflow file that executes tests, scans dependencies for CVEs, and prevents merge on vulnerability detection.',
+        acceptanceCriteria: ['Valid CI workflow syntax', 'Fails build upon critical vulnerability report'],
+        starterCode: 'name: CI Pipeline\non: [push, pull_request]',
+        deliverableType: 'code'
+      },
+      assessment: {
+        type: 'quiz',
+        questions: [
+          {
+            id: `q-${id}-sec`,
+            question: 'What is the purpose of Static Application Security Testing (SAST)?',
+            options: ['Compiling executable binaries', 'Analyzing source code without executing it to detect known security flaws and insecure patterns', 'Testing hard drive speeds', 'Increasing code comments'],
+            correctIndex: 1,
+            explanation: 'SAST inspects non-running source code to identify vulnerabilities such as buffer overflows or injection flaws before deployment.'
+          }
+        ]
+      }
+    },
+    {
+      id: `${id}-n6`,
       stageId: `${id}-s3`,
       title: `${goalClean} Production Master Capstone`,
       subtitle: 'Complete production-grade project with CI/CD and deployment',
       level: 5,
       xp: 350,
       isOptional: false,
-      position: { x: 760, y: 120 },
-      prerequisites: [`${id}-n3`],
+      position: { x: 980, y: 120 },
+      prerequisites: [`${id}-n3`, `${id}-n5`],
       description: `Deliver an end-to-end project applying all core concepts of ${goalClean}. Include automated testing, documentation, and live deployment.`,
       whyItMatters: 'Completing a full-lifecycle capstone proves industry readiness and provides a standout portfolio showcase.',
       whatYouWillLearn: [
@@ -285,7 +385,10 @@ function generateStructuredDomainRoadmap(rawGoal) {
   const edges = [
     { id: `${id}-e1`, source: `${id}-n1`, target: `${id}-n2` },
     { id: `${id}-e2`, source: `${id}-n2`, target: `${id}-n3` },
-    { id: `${id}-e3`, source: `${id}-n3`, target: `${id}-n4` },
+    { id: `${id}-e3`, source: `${id}-n2`, target: `${id}-n4` },
+    { id: `${id}-e4`, source: `${id}-n4`, target: `${id}-n5` },
+    { id: `${id}-e5`, source: `${id}-n3`, target: `${id}-n6` },
+    { id: `${id}-e6`, source: `${id}-n5`, target: `${id}-n6` },
   ];
 
   return {

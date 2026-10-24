@@ -17,7 +17,6 @@ import {
 import { MasterRoadmap, UserPlan, UserProgress, RoadmapNode } from '../types';
 import { SkillTreeCanvas } from '../components/SkillTreeCanvas';
 import { QuestDetailDrawer } from '../components/QuestDetailDrawer';
-import { MentorDrawer } from '../components/MentorDrawer';
 import { AssessmentModal } from '../components/AssessmentModal';
 
 interface RoadmapViewPageProps {
@@ -28,6 +27,9 @@ interface RoadmapViewPageProps {
   onSubmitAssessment: (planId: string, nodeId: string, answers: number[], submissionText: string) => Promise<any>;
   onToggleBookmark: (resourceId: string) => void;
   onOpenNewGoal: () => void;
+  isMentorOpen: boolean;
+  onToggleMentor: () => void;
+  onOpenMentorWithQuest: (node: RoadmapNode) => void;
 }
 
 export const RoadmapViewPage: React.FC<RoadmapViewPageProps> = ({
@@ -38,12 +40,13 @@ export const RoadmapViewPage: React.FC<RoadmapViewPageProps> = ({
   onSubmitAssessment,
   onToggleBookmark,
   onOpenNewGoal,
+  isMentorOpen,
+  onToggleMentor,
+  onOpenMentorWithQuest,
 }) => {
   const [selectedNode, setSelectedNode] = useState<RoadmapNode | null>(null);
   const [isAssessmentOpen, setIsAssessmentOpen] = useState(false);
   const [assessmentNode, setAssessmentNode] = useState<RoadmapNode | null>(null);
-  const [isMentorOpen, setIsMentorOpen] = useState(false);
-  const [mentorQuest, setMentorQuest] = useState<RoadmapNode | null>(null);
 
   if (!roadmap || !plan) {
     return (
@@ -71,11 +74,6 @@ export const RoadmapViewPage: React.FC<RoadmapViewPageProps> = ({
   const handleOpenAssessment = (node: RoadmapNode) => {
     setAssessmentNode(node);
     setIsAssessmentOpen(true);
-  };
-
-  const handleOpenMentorWithQuest = (node: RoadmapNode) => {
-    setMentorQuest(node);
-    setIsMentorOpen(true);
   };
 
   return (
@@ -135,11 +133,12 @@ export const RoadmapViewPage: React.FC<RoadmapViewPageProps> = ({
 
             {/* Launch AI Mentor button */}
             <button
-              onClick={() => {
-                setMentorQuest(activeNode);
-                setIsMentorOpen(true);
-              }}
-              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center gap-2 shadow-glow-violet transition-all cursor-pointer"
+              onClick={onToggleMentor}
+              className={`px-3.5 py-2 rounded-xl text-white font-bold text-xs flex items-center gap-2 shadow-glow-violet transition-all cursor-pointer ${
+                isMentorOpen
+                  ? 'bg-gradient-to-r from-violet-600 to-cyan-600 ring-2 ring-cyan-400'
+                  : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500'
+              }`}
             >
               <Bot className="w-4 h-4 text-cyan-accent" />
               <span className="hidden sm:inline">AI Mentor</span>
@@ -171,7 +170,7 @@ export const RoadmapViewPage: React.FC<RoadmapViewPageProps> = ({
           onCompleteQuest={onCompleteQuest}
           onOpenAssessment={node => handleOpenAssessment(node)}
           onToggleBookmark={onToggleBookmark}
-          onOpenMentorWithQuest={node => handleOpenMentorWithQuest(node)}
+          onOpenMentorWithQuest={node => onOpenMentorWithQuest(node)}
         />
       )}
 
@@ -188,15 +187,6 @@ export const RoadmapViewPage: React.FC<RoadmapViewPageProps> = ({
           }}
         />
       )}
-
-      {/* Embedded Contextual AI Mentor Drawer */}
-      <MentorDrawer
-        isOpen={isMentorOpen}
-        onClose={() => setIsMentorOpen(false)}
-        currentQuest={mentorQuest || activeNode}
-        plan={plan}
-        completedNodeIds={progress.completedNodeIds || []}
-      />
 
     </div>
   );

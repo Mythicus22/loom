@@ -65,7 +65,14 @@ export async function getMentorResponse({
           user_id: userId,
           agent_id: agentId,
           session_id: sessionId,
-          message: `Learner context:\n${JSON.stringify(context)}\n\nLearner message:\n${userMessage}`,
+          message: `Learner context:
+${JSON.stringify(context)}
+
+Learner message:
+${userMessage}
+
+Important instruction:
+Provide a concise, direct, short and to-the-point answer. Do NOT output raw schemas or boilerplate JSON wrappers; provide clear, human-readable guidance in under 3-4 concise sentences or focused steps.`,
         }),
         signal: controller.signal,
       });
@@ -94,20 +101,51 @@ export async function getMentorResponse({
       throw new Error('Mentor service response did not include a reply.');
     }
 
+    let cleanContent = data.response.trim();
+    let dynamicFollowups = null;
+
+    // Check if the response is JSON-encoded or contains a JSON block
+    const jsonMatch = cleanContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/) || [null, cleanContent];
+    const candidateJson = jsonMatch[1] ? jsonMatch[1].trim() : cleanContent;
+
+    if (candidateJson.startsWith('{') && candidateJson.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(candidateJson);
+        if (parsed.chat_response) {
+          if (typeof parsed.chat_response === 'string') {
+            cleanContent = parsed.chat_response;
+          } else if (parsed.chat_response.answer) {
+            cleanContent = parsed.chat_response.answer;
+            if (Array.isArray(parsed.chat_response.suggested_followups)) {
+              dynamicFollowups = parsed.chat_response.suggested_followups;
+            }
+          }
+        } else if (parsed.answer) {
+          cleanContent = parsed.answer;
+        } else if (parsed.message) {
+          cleanContent = parsed.message;
+        }
+      } catch {
+        // Leave as string if not valid JSON
+      }
+    }
+
     const questTitle = currentQuest?.title || 'Current Quest';
     return {
       type: 'general',
       title: progressionLevel
         ? `${progressionLevel[0].toUpperCase()}${progressionLevel.slice(1)} for ${questTitle}`
         : `Mentor Advice for ${questTitle}`,
-      content: data.response,
+      content: cleanContent,
       level: progressionLevel,
-      suggestedPrompts: [
-        '💡 Give me a Hint',
-        '🔍 Show a Code Example',
-        '🛠️ Step-by-step Guided Solution',
-        'Explain this in simpler terms',
-      ],
+      suggestedPrompts: dynamicFollowups && dynamicFollowups.length > 0
+        ? dynamicFollowups
+        : [
+            '💡 Give me a Hint',
+            '🔍 Show a Code Example',
+            '🛠️ Step-by-step Guided Solution',
+            'Explain this in simpler terms',
+          ],
     };
   } finally {
     clearTimeout(timeoutId);

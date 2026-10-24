@@ -1113,6 +1113,106 @@ export const preloadedRoadmaps = [
         }
       },
       {
+        id: 'agent-evals-guardrails',
+        stageId: 'agent-s2',
+        title: 'LLM Evaluation & Security Guardrails',
+        subtitle: 'RAGAS, prompt injection defense, and automated judge metrics',
+        level: 3,
+        xp: 200,
+        isOptional: false,
+        position: { x: 540, y: 260 },
+        prerequisites: ['agent-rag-pipeline'],
+        description: 'Implement rigorous evaluation metrics for faithfullness, answer relevancy, and context recall using RAGAS, alongside input/output security guardrails against jailbreaks.',
+        whyItMatters: 'Enterprise deployments must quantify hallucination risks and prevent adversarial prompt manipulation.',
+        whatYouWillLearn: [
+          'Faithfulness and Answer Relevance evaluation metrics',
+          'Llama Guard and NeMo Guardrail policy implementations',
+          'Automated CI/CD regression test suites for LLM outputs'
+        ],
+        estimatedMinutes: 110,
+        resources: [
+          {
+            id: 'res-a-eval',
+            title: 'RAGAS: Automated Evaluation of Retrieval Augmented Generation',
+            url: 'https://docs.ragas.io/',
+            source: 'RAGAS Framework',
+            type: 'documentation',
+            duration: '45 mins',
+            difficulty: 'Intermediate',
+            description: 'Industry standard library for quantitative RAG evaluation metrics.'
+          }
+        ],
+        practicalTask: {
+          title: 'Implement an Automated Evaluation Benchmark',
+          instructions: 'Score 20 synthetic Q&A pairs for context precision and factual hallucination with automated threshold alerts.',
+          acceptanceCriteria: ['Generates structured score report', 'Identifies hallucinations with >90% precision'],
+          starterCode: 'def evaluate_rag_pipeline(dataset): pass',
+          deliverableType: 'code'
+        },
+        assessment: {
+          type: 'quiz',
+          questions: [
+            {
+              id: 'q-a-eval',
+              question: 'What does "Faithfulness" measure in RAG evaluation frameworks?',
+              options: ['Response formatting only', 'Whether all claims in the generated answer are grounded in the retrieved context', 'The latency of the model', 'Whether the user liked the answer'],
+              correctIndex: 1,
+              explanation: 'Faithfulness verifies that every factual statement is directly supported by the retrieved document chunks, catching hallucinations.'
+            }
+          ]
+        }
+      },
+      {
+        id: 'agent-memory-state',
+        stageId: 'agent-s3',
+        title: 'Agent Memory, Checkpointing & Reflection Loops',
+        subtitle: 'Episodic vs Semantic memory, time-travel debugging, and self-critique',
+        level: 4,
+        xp: 260,
+        isOptional: false,
+        position: { x: 760, y: 260 },
+        prerequisites: ['agent-tool-use-react'],
+        description: 'Equip agents with persistent episodic memory, key-value session stores, self-reflection critique steps, and time-travel state rollback capabilities.',
+        whyItMatters: 'Stateless models forget past instructions. Memory enables long-horizon coherence and iterative quality improvement.',
+        whatYouWillLearn: [
+          'Episodic, working, and semantic long-term memory architectures',
+          'Reflection, self-critique, and tree-of-thought refinement',
+          'State persistence with Postgres/Redis checkpoint savers'
+        ],
+        estimatedMinutes: 130,
+        resources: [
+          {
+            id: 'res-a-mem',
+            title: 'Memory in AI Agents: Principles and Practice',
+            url: 'https://arxiv.org/abs/2304.03442',
+            source: 'Stanford AI Lab',
+            type: 'article',
+            duration: '50 mins',
+            difficulty: 'Advanced',
+            description: 'Generative Agents: Interactive Simulacra of Human Behavior memory architecture.'
+          }
+        ],
+        practicalTask: {
+          title: 'Build a Self-Correcting Reflection Loop',
+          instructions: 'Construct an agent node that critiques its own draft against acceptance rules, looping up to 3 times until passing quality score.',
+          acceptanceCriteria: ['Implements critique-and-refine cycle', 'Terminates cleanly on threshold condition'],
+          starterCode: 'class ReflectionAgent:\n    def critique_and_refine(self, draft): pass',
+          deliverableType: 'code'
+        },
+        assessment: {
+          type: 'quiz',
+          questions: [
+            {
+              id: 'q-a-mem',
+              question: 'How does reflection improve multi-turn agent reliability?',
+              options: ['By doubling model parameters', 'By prompting the model to explicitly inspect its previous step for errors before committing', 'By lowering API costs', 'By running without prompts'],
+              correctIndex: 1,
+              explanation: 'Reflection forces an explicit review phase that catches syntax slips, tool failures, and logical gaps.'
+            }
+          ]
+        }
+      },
+      {
         id: 'agent-multi-agent-capstone',
         stageId: 'agent-s3',
         title: 'Autonomous Multi-Agent Capstone (LangGraph)',
@@ -1121,7 +1221,7 @@ export const preloadedRoadmaps = [
         xp: 350,
         isOptional: false,
         position: { x: 980, y: 120 },
-        prerequisites: ['agent-tool-use-react'],
+        prerequisites: ['agent-tool-use-react', 'agent-memory-state'],
         description: 'Orchestrate a team of specialized agents (Researcher, Coder, Critic) collaborating through a cyclic state graph with human approval checkpoints.',
         whyItMatters: 'Complex enterprise tasks require modular division of labor among specialized agentic nodes rather than a single monolithic prompt.',
         whatYouWillLearn: [
@@ -1166,8 +1266,11 @@ export const preloadedRoadmaps = [
     edges: [
       { id: 'ae1', source: 'agent-prompt-structured', target: 'agent-embeddings-vectors' },
       { id: 'ae2', source: 'agent-embeddings-vectors', target: 'agent-rag-pipeline' },
-      { id: 'ae3', source: 'agent-rag-pipeline', target: 'agent-tool-use-react' },
-      { id: 'ae4', source: 'agent-tool-use-react', target: 'agent-multi-agent-capstone' }
+      { id: 'ae3', source: 'agent-rag-pipeline', target: 'agent-evals-guardrails' },
+      { id: 'ae4', source: 'agent-rag-pipeline', target: 'agent-tool-use-react' },
+      { id: 'ae5', source: 'agent-tool-use-react', target: 'agent-memory-state' },
+      { id: 'ae6', source: 'agent-tool-use-react', target: 'agent-multi-agent-capstone' },
+      { id: 'ae7', source: 'agent-memory-state', target: 'agent-multi-agent-capstone' }
     ]
   },
 
@@ -1695,6 +1798,56 @@ export const preloadedRoadmaps = [
         }
       },
       {
+        id: 'rob-vision-depth',
+        stageId: 'rob-s3',
+        title: 'Robot Vision & Depth Camera Processing',
+        subtitle: 'RGB-D cameras, OpenCV, PointCloud2, and AprilTag fiducial tracking',
+        level: 4,
+        xp: 220,
+        isOptional: false,
+        position: { x: 760, y: 260 },
+        prerequisites: ['rob-urdf-simulation'],
+        description: 'Process visual feeds using OpenCV and ROS 2 image transports. Work with 3D point clouds (sensor_msgs/PointCloud2) and track spatial fiducial markers like AprilTags.',
+        whyItMatters: 'Vision gives robots semantic scene understanding, allowing them to identify specific objects and navigate towards precise docking points.',
+        whatYouWillLearn: [
+          'ROS 2 image transport pipelines and cv_bridge integration',
+          'PointCloud2 voxel grid downsampling and plane segmentation',
+          'Pose estimation from visual AprilTag marker detections'
+        ],
+        estimatedMinutes: 120,
+        resources: [
+          {
+            id: 'res-r-vis',
+            title: 'ROS 2 Perception and OpenCV cv_bridge Guide',
+            url: 'https://docs.ros.org/en/humble/Tutorials/Intermediate/OpenCV-Bridge.html',
+            source: 'ROS 2 Official Tutorial',
+            type: 'documentation',
+            duration: '45 mins',
+            difficulty: 'Intermediate',
+            description: 'Converting between ROS 2 image messages and OpenCV cv::Mat.'
+          }
+        ],
+        practicalTask: {
+          title: 'Implement an AprilTag Docking Detector Node',
+          instructions: 'Write a ROS 2 Python node subscribing to camera feed, detecting tag pose, and broadcasting tf2 transform to robot base.',
+          acceptanceCriteria: ['Publishes valid transform stamped message', 'Handles camera latency gracefully'],
+          starterCode: 'import rclpy\nfrom rclpy.node import Node\nclass TagDetector(Node): pass',
+          deliverableType: 'code'
+        },
+        assessment: {
+          type: 'quiz',
+          questions: [
+            {
+              id: 'q-r-vis',
+              question: 'Why is cv_bridge necessary in ROS 2 computer vision pipelines?',
+              options: ['To speed up hard drives', 'It translates between ROS sensor_msgs/Image data format and OpenCV array matrices', 'To compile C++ code', 'To turn on the camera hardware'],
+              correctIndex: 1,
+              explanation: 'cv_bridge converts ROS 2 wire protocol image buffers into NumPy arrays and OpenCV image formats.'
+            }
+          ]
+        }
+      },
+      {
         id: 'rob-slam-mapping',
         stageId: 'rob-s3',
         title: 'Perception, LiDAR Sensor Fusion & SLAM Mapping',
@@ -1753,7 +1906,7 @@ export const preloadedRoadmaps = [
         xp: 350,
         isOptional: false,
         position: { x: 980, y: 120 },
-        prerequisites: ['rob-slam-mapping'],
+        prerequisites: ['rob-slam-mapping', 'rob-vision-depth'],
         description: 'Deploy the full ROS 2 Navigation Stack (Nav2). Configure global and local costmaps, behavior tree navigators, dynamic obstacle avoidance, and waypoint following.',
         whyItMatters: 'Nav2 is the brain that drives automated mobile robots in factories, hospitals, and planetary exploration.',
         whatYouWillLearn: [
@@ -1799,7 +1952,9 @@ export const preloadedRoadmaps = [
       { id: 're1', source: 'rob-linux-kinematics', target: 'rob-ros2-nodes-topics' },
       { id: 're2', source: 'rob-ros2-nodes-topics', target: 'rob-urdf-simulation' },
       { id: 're3', source: 'rob-urdf-simulation', target: 'rob-slam-mapping' },
-      { id: 're4', source: 'rob-slam-mapping', target: 'rob-nav2-capstone' }
+      { id: 're4', source: 'rob-urdf-simulation', target: 'rob-vision-depth' },
+      { id: 're5', source: 'rob-slam-mapping', target: 'rob-nav2-capstone' },
+      { id: 're6', source: 'rob-vision-depth', target: 'rob-nav2-capstone' }
     ]
   }
 ];

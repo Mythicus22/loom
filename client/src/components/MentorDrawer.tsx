@@ -10,7 +10,9 @@ import {
   ChevronRight, 
   Bot, 
   RotateCcw,
-  Loader2
+  Loader2,
+  Minus,
+  Maximize2
 } from 'lucide-react';
 import { RoadmapNode, UserPlan } from '../types';
 import { chatWithMentor } from '../services/api';
@@ -43,6 +45,7 @@ export const MentorDrawer: React.FC<MentorDrawerProps> = ({
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [progressionTier, setProgressionTier] = useState<'hint' | 'example' | 'solution' | null>(null);
+  const [isMinimized, setIsMinimized] = useState(false);
   const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -68,13 +71,13 @@ export const MentorDrawer: React.FC<MentorDrawerProps> = ({
         {
           id: 'init-1',
           sender: 'ai',
-          title: `AI Learning Mentor: ${currentQuest?.title || 'Active Quest'}`,
-          text: `Greetings! I am your AI mentor for **${plan?.canonicalGoal || 'your journey'}**.\n\nI have complete context on your current quest, completed nodes, and resources. How can I guide you? Use the 3-tier helper below or ask any question!`,
+          title: `AI Learning Mentor`,
+          text: `Hi! I'm your AI learning mentor for **${plan?.canonicalGoal || 'your journey'}**.\nAsk me questions about your current quest or pick a quick helper option below for short, focused advice!`,
           suggestedPrompts: [
             '💡 Give me a Hint',
             '🔍 Show a Code Example',
-            'Explain this in simpler terms',
-            'Why is this skill needed in industry?'
+            'Explain this simply',
+            'Practical tips for this quest'
           ]
         }
       ]);
@@ -82,8 +85,10 @@ export const MentorDrawer: React.FC<MentorDrawerProps> = ({
   }, [isOpen, currentQuest?.id, plan?.id, messages.length]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isLoading]);
+    if (!isMinimized) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isLoading, isMinimized]);
 
   if (!isOpen) return null;
 
@@ -111,11 +116,22 @@ export const MentorDrawer: React.FC<MentorDrawerProps> = ({
         progressionLevel: progressionLevel || null,
       });
 
+      // Parse JSON if reply text was raw json
+      let cleanText = reply.content;
+      if (typeof cleanText === 'string' && cleanText.trim().startsWith('{') && cleanText.trim().endsWith('}')) {
+        try {
+          const parsed = JSON.parse(cleanText.trim());
+          cleanText = parsed.chat_response?.answer || parsed.answer || parsed.message || cleanText;
+        } catch {
+          // ignore
+        }
+      }
+
       const aiMsg: MentorMessage = {
         id: `ai-${Date.now()}`,
         sender: 'ai',
         title: reply.title,
-        text: reply.content,
+        text: cleanText,
         levelBadge: reply.level,
         suggestedPrompts: reply.suggestedPrompts,
       };
@@ -146,79 +162,98 @@ export const MentorDrawer: React.FC<MentorDrawerProps> = ({
   };
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[460px] bg-dark-panel border-l border-violet-500/30 shadow-2xl flex flex-col overflow-hidden animate-slideLeft">
+    <div 
+      className={`fixed bottom-5 right-5 z-50 w-[92vw] sm:w-[420px] bg-dark-panel/95 backdrop-blur-xl border border-violet-500/30 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 shadow-glow-violet/10 ${
+        isMinimized ? 'h-[62px]' : 'h-[580px] max-h-[85vh]'
+      }`}
+    >
       
       {/* Header */}
-      <div className="p-4 border-b border-dark-border bg-dark-card/50 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-600 to-cyan-500 p-[1px]">
+      <div className="p-3.5 border-b border-dark-border bg-dark-card/70 flex items-center justify-between shrink-0 select-none">
+        <div 
+          className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0"
+          onClick={() => setIsMinimized(prev => !prev)}
+        >
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-600 to-cyan-500 p-[1px] shrink-0">
             <div className="w-full h-full bg-dark-panel rounded-[11px] flex items-center justify-center">
               <Bot className="w-4 h-4 text-cyan-accent" />
             </div>
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-white">AI Learning Mentor</h3>
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <h3 className="text-xs sm:text-sm font-bold text-white truncate">AI Learning Mentor</h3>
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
             </div>
-            <p className="text-[11px] text-slate-400 truncate max-w-[260px]">
-              Scoped to: {currentQuest?.title || 'Current Quest'}
+            <p className="text-[10px] text-slate-400 truncate">
+              {currentQuest?.title ? `Quest: ${currentQuest.title}` : 'Ready to help'}
             </p>
           </div>
         </div>
 
-        <button
-          onClick={onClose}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-dark-hover transition-colors cursor-pointer"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* 3-Tier Progression Bar */}
-      <div className="p-3 bg-dark-card/80 border-b border-dark-border">
-        <div className="text-[11px] font-semibold text-slate-400 mb-2 flex items-center justify-between">
-          <span>User-Controlled Help Progression:</span>
-          <span className="text-[10px] text-violet-400">Step-by-step</span>
-        </div>
-        <div className="grid grid-cols-3 gap-1.5 text-xs">
+        <div className="flex items-center gap-1 shrink-0 ml-2">
           <button
-            onClick={() => handleSendPrompt('Give me a hint for this quest', 'hint')}
-            className={`p-2 rounded-lg border font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-              progressionTier === 'hint'
-                ? 'bg-amber-950/40 border-amber-500/50 text-amber-300'
-                : 'bg-dark-panel border-dark-border text-slate-300 hover:border-amber-400/60'
-            }`}
+            onClick={() => setIsMinimized(prev => !prev)}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-dark-hover transition-colors cursor-pointer"
+            title={isMinimized ? 'Expand Chat' : 'Minimize Chat'}
           >
-            <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
-            <span>1. Hint</span>
+            {isMinimized ? <Maximize2 className="w-3.5 h-3.5" /> : <Minus className="w-3.5 h-3.5" />}
           </button>
-
           <button
-            onClick={() => handleSendPrompt('Show me a code example for this pattern', 'example')}
-            className={`p-2 rounded-lg border font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-              progressionTier === 'example'
-                ? 'bg-cyan-950/40 border-cyan-500/50 text-cyan-300'
-                : 'bg-dark-panel border-dark-border text-slate-300 hover:border-cyan-400/60'
-            }`}
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-dark-hover transition-colors cursor-pointer"
+            title="Close Chat"
           >
-            <Code2 className="w-3.5 h-3.5 text-cyan-accent" />
-            <span>2. Example</span>
-          </button>
-
-          <button
-            onClick={() => handleSendPrompt('Give me the complete guided walkthrough solution', 'solution')}
-            className={`p-2 rounded-lg border font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-              progressionTier === 'solution'
-                ? 'bg-violet-950/40 border-violet-500/50 text-violet-300'
-                : 'bg-dark-panel border-dark-border text-slate-300 hover:border-violet-400/60'
-            }`}
-          >
-            <Wrench className="w-3.5 h-3.5 text-violet-400" />
-            <span>3. Solution</span>
+            <X className="w-4 h-4" />
           </button>
         </div>
       </div>
+
+      {!isMinimized && (
+        <>
+          {/* 3-Tier Progression Bar */}
+          <div className="p-2.5 bg-dark-card/50 border-b border-dark-border shrink-0">
+            <div className="text-[10px] font-semibold text-slate-400 mb-1.5 flex items-center justify-between">
+              <span>Quick Help Tiers:</span>
+              <span className="text-[10px] text-violet-400 font-mono">Instant Advice</span>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5 text-xs">
+              <button
+                onClick={() => handleSendPrompt('Give me a quick hint for this quest', 'hint')}
+                className={`p-1.5 rounded-lg border font-medium flex items-center justify-center gap-1 transition-all cursor-pointer text-[11px] ${
+                  progressionTier === 'hint'
+                    ? 'bg-amber-950/50 border-amber-500/50 text-amber-300'
+                    : 'bg-dark-panel border-dark-border text-slate-300 hover:border-amber-400/60'
+                }`}
+              >
+                <Lightbulb className="w-3 h-3 text-amber-400 shrink-0" />
+                <span>1. Hint</span>
+              </button>
+
+              <button
+                onClick={() => handleSendPrompt('Show me a brief code example for this pattern', 'example')}
+                className={`p-1.5 rounded-lg border font-medium flex items-center justify-center gap-1 transition-all cursor-pointer text-[11px] ${
+                  progressionTier === 'example'
+                    ? 'bg-cyan-950/50 border-cyan-500/50 text-cyan-300'
+                    : 'bg-dark-panel border-dark-border text-slate-300 hover:border-cyan-400/60'
+                }`}
+              >
+                <Code2 className="w-3 h-3 text-cyan-accent shrink-0" />
+                <span>2. Example</span>
+              </button>
+
+              <button
+                onClick={() => handleSendPrompt('Give me a step-by-step solution walkthrough', 'solution')}
+                className={`p-1.5 rounded-lg border font-medium flex items-center justify-center gap-1 transition-all cursor-pointer text-[11px] ${
+                  progressionTier === 'solution'
+                    ? 'bg-violet-950/50 border-violet-500/50 text-violet-300'
+                    : 'bg-dark-panel border-dark-border text-slate-300 hover:border-violet-400/60'
+                }`}
+              >
+                <Wrench className="w-3 h-3 text-violet-400 shrink-0" />
+                <span>3. Solution</span>
+              </button>
+            </div>
+          </div>
 
       {/* Messages Scroll Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
@@ -274,31 +309,33 @@ export const MentorDrawer: React.FC<MentorDrawerProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Field */}
-      <div className="p-3 border-t border-dark-border bg-dark-card/60">
-        <form
-          onSubmit={e => {
-            e.preventDefault();
-            handleSendPrompt(inputMessage);
-          }}
-          className="flex items-center gap-2 bg-dark-panel border border-dark-border rounded-xl px-3 py-2 focus-within:border-violet-500 transition-colors"
-        >
-          <input
-            type="text"
-            value={inputMessage}
-            onChange={e => setInputMessage(e.target.value)}
-            placeholder="Ask mentor a question..."
-            className="w-full bg-transparent border-none text-slate-100 placeholder-slate-500 focus:outline-none text-xs"
-          />
-          <button
-            type="submit"
-            disabled={!inputMessage.trim() || isLoading}
-            className="p-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white transition-all cursor-pointer"
-          >
-            <Send className="w-3.5 h-3.5" />
-          </button>
-        </form>
-      </div>
+          {/* Input Field */}
+          <div className="p-3 border-t border-dark-border bg-dark-card/60 shrink-0">
+            <form
+              onSubmit={e => {
+                e.preventDefault();
+                handleSendPrompt(inputMessage);
+              }}
+              className="flex items-center gap-2 bg-dark-panel border border-dark-border rounded-xl px-3 py-2 focus-within:border-violet-500 transition-colors"
+            >
+              <input
+                type="text"
+                value={inputMessage}
+                onChange={e => setInputMessage(e.target.value)}
+                placeholder="Ask mentor a question..."
+                className="w-full bg-transparent border-none text-slate-100 placeholder-slate-500 focus:outline-none text-xs"
+              />
+              <button
+                type="submit"
+                disabled={!inputMessage.trim() || isLoading}
+                className="p-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white transition-all cursor-pointer"
+              >
+                <Send className="w-3.5 h-3.5" />
+              </button>
+            </form>
+          </div>
+        </>
+      )}
 
     </div>
   );
