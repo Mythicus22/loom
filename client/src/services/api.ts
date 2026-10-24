@@ -143,6 +143,7 @@ export async function submitAssessment(
 }
 
 export async function chatWithMentor(params: {
+  sessionId: string;
   userMessage?: string;
   currentQuest?: any;
   userGoal?: string;

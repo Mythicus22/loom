@@ -43,10 +43,25 @@ export const MentorDrawer: React.FC<MentorDrawerProps> = ({
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [progressionTier, setProgressionTier] = useState<'hint' | 'example' | 'solution' | null>(null);
+  const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const sessionIdRef = useRef(sessionId);
+  const contextKey = `${plan?.id || ''}:${currentQuest?.id || ''}`;
+  const previousContextKey = useRef(contextKey);
 
-  // Initialize greeting on open
+  useEffect(() => {
+    if (previousContextKey.current !== contextKey) {
+      previousContextKey.current = contextKey;
+      const nextSessionId = crypto.randomUUID();
+      sessionIdRef.current = nextSessionId;
+      setSessionId(nextSessionId);
+      setMessages([]);
+      setProgressionTier(null);
+      setIsLoading(false);
+    }
+  }, [contextKey]);
+
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       setMessages([
@@ -64,7 +79,7 @@ export const MentorDrawer: React.FC<MentorDrawerProps> = ({
         }
       ]);
     }
-  }, [isOpen, currentQuest, plan]);
+  }, [isOpen, currentQuest?.id, plan?.id, messages.length]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -83,9 +98,11 @@ export const MentorDrawer: React.FC<MentorDrawerProps> = ({
     setMessages(prev => [...prev, userMsg]);
     setInputMessage('');
     setIsLoading(true);
+    const requestSessionId = sessionId;
 
     try {
       const reply = await chatWithMentor({
+        sessionId: requestSessionId,
         userMessage: text,
         currentQuest,
         userGoal: plan?.canonicalGoal,
@@ -103,22 +120,28 @@ export const MentorDrawer: React.FC<MentorDrawerProps> = ({
         suggestedPrompts: reply.suggestedPrompts,
       };
 
-      setMessages(prev => [...prev, aiMsg]);
-      if (progressionLevel) {
+      if (sessionIdRef.current === requestSessionId) {
+        setMessages(prev => [...prev, aiMsg]);
+      }
+      if (sessionIdRef.current === requestSessionId && progressionLevel) {
         setProgressionTier(progressionLevel);
       }
     } catch (err: any) {
-      setMessages(prev => [
-        ...prev,
-        {
-          id: `err-${Date.now()}`,
-          sender: 'ai',
-          title: 'Connection Issue',
-          text: 'Apologies, could not connect to mentor server. Please try again.',
-        }
-      ]);
+      if (sessionIdRef.current === requestSessionId) {
+        setMessages(prev => [
+          ...prev,
+          {
+            id: `err-${Date.now()}`,
+            sender: 'ai',
+            title: 'Connection Issue',
+            text: 'Apologies, could not connect to mentor server. Please try again.',
+          }
+        ]);
+      }
     } finally {
-      setIsLoading(false);
+      if (sessionIdRef.current === requestSessionId) {
+        setIsLoading(false);
+      }
     }
   };
 

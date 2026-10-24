@@ -489,9 +489,11 @@ router.post('/assessments/submit', async (req, res) => {
 // -------------------------------------------------------------
 router.post('/mentor/chat', async (req, res) => {
   try {
-    const { userMessage, currentQuest, userGoal, completedNodes, learnerProfile, progressionLevel } = req.body;
+    const { sessionId, userMessage, currentQuest, userGoal, completedNodes, learnerProfile, progressionLevel } = req.body;
     
     const reply = await getMentorResponse({
+      userId: DEFAULT_USER_ID,
+      sessionId,
       userMessage,
       currentQuest,
       userGoal,
