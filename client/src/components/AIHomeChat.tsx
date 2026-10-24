@@ -3,26 +3,28 @@ import {
   Sparkles, 
   Send, 
   Compass, 
-  Clock, 
-  Target, 
-  BookOpen, 
   ArrowRight, 
   RotateCcw, 
-  Check, 
-  Layers, 
   Cpu, 
   BrainCircuit, 
   Code2, 
   Bot, 
-  Database,
   Sliders,
   ChevronRight,
   Loader2
 } from 'lucide-react';
 import { LearnerProfile } from '../types';
+import { MasterRoadmap } from '../types';
+import { fetchRoadmaps } from '../services/api';
+import MorphOrb from './ui/ai-thiking-orb-and-input';
 
 interface AIHomeChatProps {
-  onGenerateRoadmap: (goal: string, profile: LearnerProfile) => Promise<void>;
+  onGenerateRoadmap: (
+    goal: string,
+    profile: LearnerProfile,
+    options?: { deferNavigation?: boolean }
+  ) => Promise<string>;
+  onGenerationComplete: () => void;
   isGenerating: boolean;
   generationStep: string;
 }
@@ -36,13 +38,27 @@ interface ChatMessage {
   isProfilePreview?: boolean;
 }
 
-const SUGGESTED_GOALS = [
-  { label: 'Become a Full-Stack Developer', icon: Code2, desc: 'React, Node.js, DBs & Cloud' },
-  { label: 'Learn Machine Learning', icon: BrainCircuit, desc: 'Python, PyTorch, Math & MLOps' },
-  { label: 'Master DSA for Placements', icon: Cpu, desc: 'LeetCode patterns, Trees & DP' },
-  { label: 'Build AI Agents', icon: Bot, desc: 'RAG, Vector DBs & LangGraph' },
-  { label: 'Learn Robotics and ROS 2', icon: Compass, desc: 'Kinematics, Gazebo & Nav2' },
+interface RetryTarget {
+  goal: string;
+  profile: LearnerProfile;
+  deferNavigation: boolean;
+}
+
+const POPULAR_GOALS = [
+  { title: 'Build AI Agents and RAG Systems', icon: Bot },
+  { title: 'Master DSA for Placements', icon: Cpu },
+  { title: 'Learn Robotics and ROS 2', icon: Compass },
+  { title: 'Learn Machine Learning', icon: BrainCircuit },
+  { title: 'Become a Full-Stack Web Developer', icon: Code2 },
 ];
+
+const DEFAULT_PROFILE: LearnerProfile = {
+  experienceLevel: 'Beginner',
+  hoursPerWeek: 10,
+  targetWeeks: 8,
+  preferredFormat: 'mixed',
+  desiredOutcome: 'projects',
+};
 
 const ADAPTIVE_QUESTIONS = [
   {
@@ -103,6 +119,7 @@ const ADAPTIVE_QUESTIONS = [
 
 export const AIHomeChat: React.FC<AIHomeChatProps> = ({
   onGenerateRoadmap,
+  onGenerationComplete,
   isGenerating,
   generationStep,
 }) => {
@@ -111,17 +128,41 @@ export const AIHomeChat: React.FC<AIHomeChatProps> = ({
   const [conversationStarted, setConversationStarted] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
+  const [popularRoadmaps, setPopularRoadmaps] = useState<MasterRoadmap[]>([]);
+  const [popularLoading, setPopularLoading] = useState(true);
+  const [popularError, setPopularError] = useState('');
+  const [generationError, setGenerationError] = useState('');
+  const [retryTarget, setRetryTarget] = useState<RetryTarget | null>(null);
+  const pendingOrbReply = useRef<((reply: string) => void) | null>(null);
+  const navigateAfterOrb = useRef(false);
 
   // Accumulated profile
-  const [profile, setProfile] = useState<LearnerProfile>({
-    experienceLevel: 'Beginner',
-    hoursPerWeek: 10,
-    targetWeeks: 8,
-    preferredFormat: 'mixed',
-    desiredOutcome: 'projects',
-  });
+  const [profile, setProfile] = useState<LearnerProfile>(DEFAULT_PROFILE);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const loadPopularRoadmaps = async () => {
+    setPopularLoading(true);
+    setPopularError('');
+    try {
+      const roadmaps = await fetchRoadmaps();
+      const byTitle = new Map(roadmaps.map(roadmap => [roadmap.canonicalGoal, roadmap]));
+      setPopularRoadmaps(
+        POPULAR_GOALS.flatMap(({ title }) => {
+          const roadmap = byTitle.get(title);
+          return roadmap ? [roadmap] : [];
+        })
+      );
+    } catch (err) {
+      setPopularError(err instanceof Error ? err.message : 'Could not load popular roadmaps.');
+    } finally {
+      setPopularLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadPopularRoadmaps();
+  }, []);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -132,6 +173,8 @@ export const AIHomeChat: React.FC<AIHomeChatProps> = ({
     if (!selectedGoal.trim()) return;
     setGoal(selectedGoal);
     setConversationStarted(true);
+    setProfile(DEFAULT_PROFILE);
+    setGenerationError('');
 
     const initialMessages: ChatMessage[] = [
       {
@@ -155,6 +198,24 @@ export const AIHomeChat: React.FC<AIHomeChatProps> = ({
 
     setMessages(initialMessages);
     setCurrentQuestionIdx(0);
+  };
+
+  const handleOrbSubmit = (selectedGoal: string) => new Promise<string>((resolve) => {
+    navigateAfterOrb.current = false;
+    pendingOrbReply.current = resolve;
+    handleStartGoal(selectedGoal);
+  });
+
+  const handleOrbComplete = () => {
+    if (navigateAfterOrb.current) {
+      navigateAfterOrb.current = false;
+      onGenerationComplete();
+    }
+  };
+
+  const handleOrbCancel = () => {
+    pendingOrbReply.current = null;
+    navigateAfterOrb.current = false;
   };
 
   // Handle user answering an adaptive question
@@ -256,97 +317,84 @@ export const AIHomeChat: React.FC<AIHomeChatProps> = ({
     }
   };
 
-  const handleTriggerGenerate = () => {
-    onGenerateRoadmap(goal, profile);
+  const executeGeneration = async (target: RetryTarget) => {
+    setGenerationError('');
+    setRetryTarget(target);
+    try {
+      const response = await onGenerateRoadmap(target.goal, target.profile, {
+        deferNavigation: target.deferNavigation,
+      });
+      setRetryTarget(null);
+      if (target.deferNavigation) {
+        if (pendingOrbReply.current) {
+          navigateAfterOrb.current = true;
+          pendingOrbReply.current(response);
+        } else {
+          onGenerationComplete();
+        }
+        pendingOrbReply.current = null;
+      }
+    } catch (err) {
+      setGenerationError(err instanceof Error ? err.message : 'Roadmap generation failed. Please try again.');
+    }
+  };
+
+  const handleTriggerGenerate = () => executeGeneration({
+    goal,
+    profile,
+    deferNavigation: true,
+  });
+
+  const handlePopularSelect = async (roadmap: MasterRoadmap) => {
+    await executeGeneration({
+      goal: roadmap.canonicalGoal,
+      profile: DEFAULT_PROFILE,
+      deferNavigation: false,
+    });
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex flex-col justify-between max-w-4xl mx-auto px-4 sm:px-6 py-8">
-      
-      {/* -------------------------------------------------------------------- */}
-      {/* Initial Landing State (before goal is entered) */}
-      {/* -------------------------------------------------------------------- */}
-      {!conversationStarted && (
-        <div className="flex-1 flex flex-col justify-center items-center text-center my-auto space-y-8 animate-fadeIn">
-          
-          {/* Logo badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-violet-950/40 border border-violet-500/30 text-violet-300 text-xs font-semibold shadow-glow-violet/20 animate-pulse-slow">
-            <Sparkles className="w-4 h-4 text-cyan-accent" />
-            <span>AI-Powered Adaptive Learning Engine</span>
+    <div className="home-page">
+      <div className="home-layout">
+        <section className="home-primary">
+          <div className="home-heading">
+            <div className="home-eyebrow">
+              <Sparkles className="w-4 h-4" />
+              <span>AI-powered adaptive learning</span>
+            </div>
+            <h1>What do you want to learn?</h1>
+            <p>Describe a goal to tailor a roadmap to your pace, experience, and ambitions.</p>
           </div>
 
-          {/* Prominent Greeting */}
-          <div className="space-y-3 max-w-2xl">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white leading-tight">
-              What do you want to learn?
-            </h1>
-            <p className="text-base sm:text-lg text-slate-400 font-normal max-w-xl mx-auto">
-              Tell us your goal. We'll build a personalized, gamified quest map that fits your schedule, experience, and ambitions.
-            </p>
-          </div>
+          <MorphOrb
+            onSubmit={handleOrbSubmit}
+            onComplete={handleOrbComplete}
+            onCancel={handleOrbCancel}
+          />
 
-          {/* Central Large Chat Input */}
-          <div className="w-full max-w-2xl">
-            <form 
-              onSubmit={handleSendMessage}
-              className="relative rounded-2xl p-[1.5px] bg-gradient-to-r from-violet-600 via-indigo-600 to-cyan-500 shadow-glow-violet transition-all focus-within:shadow-glow-cyan"
-            >
-              <div className="flex items-center bg-dark-panel rounded-[14px] px-4 py-3.5 gap-3">
-                <Sparkles className="w-5 h-5 text-violet-400 shrink-0" />
-                <input
-                  type="text"
-                  value={inputMessage}
-                  onChange={e => setInputMessage(e.target.value)}
-                  placeholder="e.g. Master Machine Learning in 2 months, Learn ROS 2, Full-Stack Web Dev..."
-                  className="w-full bg-transparent border-none text-slate-100 placeholder-slate-500 focus:outline-none text-base"
-                  autoFocus
-                />
-                <button
-                  type="submit"
-                  disabled={!inputMessage.trim()}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium text-sm flex items-center gap-2 transition-all shadow-glow-violet/30 cursor-pointer"
-                >
-                  <span>Build Path</span>
-                  <Send className="w-4 h-4" />
+          {isGenerating && (
+            <div className="home-generation-status" role="status">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>{generationStep || 'Generating your roadmap…'}</span>
+            </div>
+          )}
+
+          {generationError && (
+            <div className="home-error" role="alert">
+              <span>{generationError}</span>
+              {retryTarget && (
+                <button onClick={() => void executeGeneration(retryTarget)} disabled={isGenerating}>
+                  Retry
                 </button>
-              </div>
-            </form>
-            <div className="flex items-center justify-between text-[11px] text-slate-500 mt-2 px-2">
-              <span>💡 Reusable master roadmaps personalized to your schedule</span>
-              <span>RPG skill tree visualization</span>
+              )}
             </div>
-          </div>
-
-          {/* Suggested Goal Chips */}
-          <div className="w-full max-w-2xl pt-4">
-            <div className="text-xs uppercase font-bold tracking-wider text-slate-500 mb-3 text-center">
-              Or Choose a Popular Master Quest
-            </div>
-            <div className="flex flex-wrap gap-2.5 justify-center">
-              {SUGGESTED_GOALS.map((item, idx) => {
-                const IconComponent = item.icon;
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => handleStartGoal(item.label)}
-                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-dark-card border border-dark-border hover:border-violet-500/50 hover:bg-dark-hover transition-all text-xs font-medium text-slate-300 hover:text-white group cursor-pointer"
-                  >
-                    <IconComponent className="w-3.5 h-3.5 text-cyan-accent group-hover:scale-110 transition-transform" />
-                    <span>{item.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-        </div>
-      )}
+          )}
 
       {/* -------------------------------------------------------------------- */}
       {/* Conversational Adaptive Flow */}
       {/* -------------------------------------------------------------------- */}
       {conversationStarted && (
-        <div className="flex-1 flex flex-col justify-start space-y-6 max-w-3xl mx-auto w-full">
+        <div className="home-onboarding">
           
           {/* Header indicator */}
           <div className="flex items-center justify-between pb-3 border-b border-dark-border">
@@ -357,6 +405,9 @@ export const AIHomeChat: React.FC<AIHomeChatProps> = ({
             </div>
             <button
               onClick={() => {
+                pendingOrbReply.current?.('Profile setup was restarted. Enter your goal again when ready.');
+                pendingOrbReply.current = null;
+                navigateAfterOrb.current = false;
                 setConversationStarted(false);
                 setGoal('');
                 setMessages([]);
@@ -480,16 +531,13 @@ export const AIHomeChat: React.FC<AIHomeChatProps> = ({
 
             {/* Generation loading indicator */}
             {isGenerating && (
-              <div className="p-4 rounded-xl bg-dark-card border border-violet-500/40 text-center space-y-3 animate-pulse">
+              <div className="p-4 rounded-xl bg-dark-card border border-violet-500/40 text-center space-y-3">
                 <div className="flex items-center justify-center gap-2 text-violet-300 font-semibold text-sm">
                   <Loader2 className="w-5 h-5 animate-spin text-cyan-accent" />
-                  <span>{generationStep || 'Generating personalized skill tree...'}</span>
-                </div>
-                <div className="w-full bg-dark-panel rounded-full h-1.5 overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-violet-500 via-cyan-400 to-emerald-400 animate-shimmer" style={{ width: '80%' }}></div>
+                  <span>{generationStep || 'Generating your personalized roadmap…'}</span>
                 </div>
                 <p className="text-[11px] text-slate-400">
-                  Checking shared master roadmaps • Personalizing schedule • Preparing RPG quests
+                  Waiting for the roadmap service to finish.
                 </p>
               </div>
             )}
@@ -525,6 +573,58 @@ export const AIHomeChat: React.FC<AIHomeChatProps> = ({
         </div>
       )}
 
+        </section>
+
+        <aside className="home-popular" aria-labelledby="popular-roadmaps-heading">
+          <div className="home-popular-heading">
+            <span>Explore a proven path</span>
+            <h2 id="popular-roadmaps-heading">Some popular roadmaps</h2>
+          </div>
+
+          {popularLoading ? (
+            <div className="home-popular-list" aria-label="Loading popular roadmaps">
+              {POPULAR_GOALS.map(({ title }) => (
+                <div className="home-roadmap-skeleton" key={title} />
+              ))}
+            </div>
+          ) : popularError ? (
+            <div className="home-popular-error" role="alert">
+              <p>{popularError}</p>
+              <button onClick={() => void loadPopularRoadmaps()}>Try again</button>
+            </div>
+          ) : (
+            <div className="home-popular-list">
+              {POPULAR_GOALS.map(({ title, icon: Icon }) => {
+                const roadmap = popularRoadmaps.find(item => item.canonicalGoal === title);
+                if (!roadmap) return null;
+                return (
+                  <button
+                    className="home-roadmap-choice"
+                    key={roadmap.id}
+                    onClick={() => void handlePopularSelect(roadmap)}
+                    disabled={isGenerating}
+                  >
+                    <span className="home-roadmap-icon"><Icon className="w-4 h-4" /></span>
+                    <span className="home-roadmap-label">{roadmap.canonicalGoal}</span>
+                    <ArrowRight className="home-roadmap-arrow w-4 h-4" />
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {!popularLoading && !popularError && popularRoadmaps.length === 0 && (
+            <p className="home-popular-empty">No popular roadmaps are available right now.</p>
+          )}
+
+          {isGenerating && (
+            <div className="home-sidebar-loading" role="status">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>{generationStep || 'Building roadmap…'}</span>
+            </div>
+          )}
+        </aside>
+      </div>
     </div>
   );
 };

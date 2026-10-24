@@ -48,7 +48,7 @@ export function App() {
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState('');
-  const [bannerAlert, setBannerAlert] = useState<{ text: string; type: 'success' | 'info' } | null>(null);
+  const [bannerAlert, setBannerAlert] = useState<{ text: string; type: 'success' | 'info' | 'error' } | null>(null);
 
   // Load initial active plan
   const loadInitialData = async () => {
@@ -100,27 +100,17 @@ export function App() {
   };
 
   // Generate roadmap through conversational flow: Landing Page -> Roadmap
-  const handleGenerateRoadmap = async (goal: string, profile: LearnerProfile) => {
+  const handleGenerateRoadmap = async (
+    goal: string,
+    profile: LearnerProfile,
+    options: { deferNavigation?: boolean } = {}
+  ): Promise<string> => {
     setIsGenerating(true);
-    setGenerationStep('Analyzing goal & classifying domain...');
+    setGenerationStep('Finding the best roadmap for your goal...');
 
     try {
-      await new Promise(r => setTimeout(r, 600));
-      setGenerationStep('Searching master roadmap knowledge base...');
-      
       const res = await matchOrCreateRoadmap(goal, profile);
-      
-      await new Promise(r => setTimeout(r, 500));
-      if (res.isReused) {
-        setGenerationStep(`Reusing Master Roadmap: ${res.masterRoadmap.canonicalGoal}`);
-      } else {
-        setGenerationStep('Generating and validating new master roadmap...');
-      }
-
-      await new Promise(r => setTimeout(r, 600));
-      setGenerationStep('Personalizing schedule & preparing interactive quest tree...');
-
-      await new Promise(r => setTimeout(r, 400));
+      setGenerationStep('Preparing your personalized quest map...');
       setActiveRoadmap(res.masterRoadmap);
       setActivePlan(res.userPlan);
       setProgress(res.progress);
@@ -141,11 +131,15 @@ export function App() {
 
       setTimeout(() => setBannerAlert(null), 6000);
 
-      // Smooth direct transition into the interactive Roadmap page!
-      setCurrentTab('roadmap');
-    } catch (err: any) {
+      if (!options.deferNavigation) {
+        setCurrentTab('roadmap');
+      }
+      return `Your personalized roadmap for ${res.masterRoadmap.canonicalGoal} is ready.`;
+    } catch (err) {
       console.error('Failed to generate roadmap:', err);
-      alert(`Error generating roadmap: ${err.message}`);
+      const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+      setBannerAlert({ text: `Roadmap generation failed: ${message}`, type: 'error' });
+      throw err instanceof Error ? err : new Error(message);
     } finally {
       setIsGenerating(false);
       setGenerationStep('');
@@ -246,7 +240,7 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-dark-bg text-slate-100 flex flex-col font-sans">
+    <div className={`min-h-screen bg-dark-bg text-slate-100 flex flex-col font-sans ${currentTab === 'home' ? 'home-theme' : ''}`}>
       
       {/* Upgraded Clean Navbar */}
       <Navbar
@@ -266,7 +260,9 @@ export function App() {
           <div className={`p-4 rounded-xl border shadow-2xl text-xs font-semibold flex items-center gap-2.5 max-w-md ${
             bannerAlert.type === 'success'
               ? 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200'
-              : 'bg-violet-950/90 border-violet-500/50 text-violet-200'
+              : bannerAlert.type === 'error'
+                ? 'bg-rose-950/90 border-rose-500/50 text-rose-200'
+                : 'bg-violet-950/90 border-violet-500/50 text-violet-200'
           }`}>
             <span>{bannerAlert.text}</span>
           </div>
@@ -279,6 +275,7 @@ export function App() {
         {currentTab === 'home' && (
           <AIHomeChat
             onGenerateRoadmap={handleGenerateRoadmap}
+            onGenerationComplete={() => setCurrentTab('roadmap')}
             isGenerating={isGenerating}
             generationStep={generationStep}
           />
