@@ -20,15 +20,27 @@ import {
   User,
   Sparkles,
   Save,
-  Check
+  Check,
+  RefreshCw,
 } from 'lucide-react';
-import { MasterRoadmap, UserPlan, UserProgress, LevelInfo, LearnerProfile } from '../types';
+import ContributionSkyline from '../components/ui/contribution-skyline';
+import {
+  MasterRoadmap,
+  UserPlan,
+  UserProgress,
+  LevelInfo,
+  LearnerProfile,
+  QuestActivityResponse,
+  QuestCompletionDetail,
+} from '../types';
 import { 
   fetchUserPlans, 
   selectUserPlan, 
   updatePlanSchedule, 
   toggleStreakFreeze,
-  fetchUserStats 
+  fetchUserStats,
+  fetchQuestActivity,
+  fetchQuestCompletions,
 } from '../services/api';
 
 interface DashboardPageProps {
@@ -61,6 +73,25 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [newWeeks, setNewWeeks] = useState(8);
   const [isUpdatingSchedule, setIsUpdatingSchedule] = useState(false);
   const [savedPrefSuccess, setSavedPrefSuccess] = useState(false);
+  const [activity, setActivity] = useState<QuestActivityResponse>({
+    activity: [],
+    endDate: (() => {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).formatToParts(new Date());
+      const date = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+      return `${date.year}-${date.month}-${date.day}`;
+    })(),
+  });
+  const [activityLoading, setActivityLoading] = useState(true);
+  const [activityError, setActivityError] = useState('');
+  const [selectedActivityDate, setSelectedActivityDate] = useState<string | null>(null);
+  const [selectedCompletions, setSelectedCompletions] = useState<QuestCompletionDetail[]>([]);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState('');
 
   const [profileForm, setProfileForm] = useState<LearnerProfile>({
     experienceLevel: activePlan?.learnerProfile?.experienceLevel || 'Beginner',
@@ -82,6 +113,36 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   useEffect(() => {
     loadPlans();
   }, [activePlan]);
+
+  const loadActivity = async () => {
+    setActivityLoading(true);
+    setActivityError('');
+    try {
+      setActivity(await fetchQuestActivity());
+    } catch (err) {
+      setActivityError(err instanceof Error ? err.message : 'Failed to load quest activity');
+    } finally {
+      setActivityLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadActivity();
+  }, [progress.completedNodeIds]);
+
+  const loadCompletions = async (date: string) => {
+    setSelectedActivityDate(date);
+    setDetailsLoading(true);
+    setDetailsError('');
+    try {
+      setSelectedCompletions(await fetchQuestCompletions(date));
+    } catch (err) {
+      setSelectedCompletions([]);
+      setDetailsError(err instanceof Error ? err.message : 'Failed to load quest details');
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
 
   const handleToggleFreeze = async () => {
     if (!activePlan) return;
@@ -161,7 +222,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-dark-panel border border-amber-500/30 text-amber-400 text-xs font-semibold">
               <Flame className="w-4 h-4 fill-amber-400 animate-pulse" />
-              <span>{progress.streakDays} Day Streak</span>
+              <span>{progress.streakDays} Day Freeze-Protected Streak</span>
             </div>
 
             <button
@@ -210,6 +271,106 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         </div>
       </div>
+
+      <section className="space-y-3" aria-labelledby="quest-activity-heading">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 id="quest-activity-heading" className="text-2xl font-bold text-white">Quest Activity</h2>
+            <p className="mt-1 text-sm text-slate-400">
+              Each newly completed quest counts once across your roadmaps. Daily tracking starts with this update; earlier completions are not backfilled.
+            </p>
+          </div>
+          {activityError && (
+            <button
+              type="button"
+              onClick={() => void loadActivity()}
+              disabled={activityLoading}
+              className="inline-flex items-center gap-2 rounded-lg border border-dark-border px-3 py-2 text-sm text-slate-200 hover:border-slate-500 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-4 w-4 ${activityLoading ? 'animate-spin' : ''}`} />
+              Retry activity
+            </button>
+          )}
+        </div>
+
+        {activityError && (
+          <p role="alert" className="rounded-lg border border-rose-500/30 bg-rose-950/30 px-3 py-2 text-sm text-rose-200">
+            {activityError}
+          </p>
+        )}
+
+        <div
+          style={{
+            '--color-background': '#111214',
+            '--color-foreground': '#f4f4f5',
+            '--color-border': '#303236',
+            '--color-muted-foreground': '#a1a1aa',
+          } as React.CSSProperties}
+        >
+          <ContributionSkyline
+            data={activity.activity}
+            endDate={activity.endDate}
+            title="Quest Activity"
+            unit="quest completed"
+            unitPlural="quests completed"
+            palette="github"
+            className="dashboard-quest-activity"
+            onCellClick={(day) => void loadCompletions(day.date)}
+            footer={
+              activityError
+                ? 'Quest activity could not be loaded. Retry to fetch your history.'
+                : activityLoading
+                  ? 'Loading quest activity…'
+                  : activity.activity.length === 0
+                    ? 'No quests completed yet. Your activity will appear here when you finish a quest.'
+                    : 'Activity shows newly completed quests across all roadmaps.'
+            }
+          />
+        </div>
+
+        {selectedActivityDate && (
+          <div className="rounded-xl border border-dark-border bg-dark-card p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="font-semibold text-white">Quests completed on {selectedActivityDate}</h3>
+              <button
+                type="button"
+                onClick={() => setSelectedActivityDate(null)}
+                className="text-sm text-slate-400 hover:text-white"
+              >
+                Close
+              </button>
+            </div>
+            {detailsLoading ? (
+              <p className="text-sm text-slate-400">Loading completed quests…</p>
+            ) : detailsError ? (
+              <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-rose-200">
+                <span>{detailsError}</span>
+                <button
+                  type="button"
+                  onClick={() => void loadCompletions(selectedActivityDate)}
+                  className="text-slate-100 underline"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : selectedCompletions.length > 0 ? (
+              <ul className="space-y-2">
+                {selectedCompletions.map((completion) => (
+                  <li
+                    key={`${completion.roadmapName}-${completion.nodeId}-${completion.completedAt}`}
+                    className="text-sm"
+                  >
+                    <span className="font-medium text-slate-100">{completion.nodeTitle}</span>
+                    <span className="text-slate-400"> — {completion.roadmapName}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-slate-400">No completed quests recorded for this date.</p>
+            )}
+          </div>
+        )}
+      </section>
 
       {/* ------------------------------------------------------------- */}
       {/* 2. Quick Resume Active Journey Widget */}

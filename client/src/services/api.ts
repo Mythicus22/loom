@@ -1,4 +1,11 @@
-import { MasterRoadmap, UserPlan, UserProgress, LevelInfo } from '../types';
+import {
+  MasterRoadmap,
+  UserPlan,
+  UserProgress,
+  LevelInfo,
+  QuestActivityResponse,
+  QuestCompletionDetail,
+} from '../types';
 
 const API_BASE = '/api';
 
@@ -166,4 +173,25 @@ export async function fetchUserStats(): Promise<any> {
   const data = await res.json();
   if (!data.success) throw new Error(data.error || 'Failed to fetch user stats');
   return data;
+}
+
+export async function fetchQuestActivity(): Promise<QuestActivityResponse> {
+  const res = await fetch(`${API_BASE}/activity`);
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || `Failed to fetch quest activity (${res.status})`);
+  }
+  if (!Array.isArray(data.activity) || typeof data.endDate !== 'string') {
+    throw new Error('The server returned invalid quest activity data');
+  }
+  return { activity: data.activity, endDate: data.endDate };
+}
+
+export async function fetchQuestCompletions(date: string): Promise<QuestCompletionDetail[]> {
+  const res = await fetch(`${API_BASE}/activity/${encodeURIComponent(date)}`);
+  const data = await res.json();
+  if (!res.ok || !data.success || !Array.isArray(data.completions)) {
+    throw new Error(data.error || `Failed to fetch quest details (${res.status})`);
+  }
+  return data.completions;
 }

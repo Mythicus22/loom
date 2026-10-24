@@ -26,10 +26,18 @@ const DailyQuestSchema = new mongoose.Schema({
   completed: { type: Boolean, default: false },
 }, { _id: false });
 
+const CompletionEventSchema = new mongoose.Schema({
+  nodeId: { type: String, required: true },
+  nodeTitle: { type: String, required: true },
+  roadmapName: { type: String, required: true },
+  completedAt: { type: Date, required: true },
+}, { _id: false });
+
 const UserProgressSchema = new mongoose.Schema({
   userId: { type: String, default: 'default_hero', index: true },
   planId: { type: String, required: true, index: true },
   completedNodeIds: [{ type: String }],
+  completionEvents: { type: [CompletionEventSchema], default: [] },
   verifiedNodeIds: [{ type: String }],
   bookmarkedResourceIds: [{ type: String }],
   completedResourceIds: [{ type: String }],

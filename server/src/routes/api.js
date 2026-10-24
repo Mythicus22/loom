@@ -5,6 +5,14 @@ import { UserProgress } from '../models/UserProgress.js';
 import { findBestMasterRoadmap, personalizePlanSchedule } from '../services/roadmapMatcher.js';
 import { generateAndSaveMasterRoadmap } from '../services/roadmapGenerator.js';
 import { getMentorResponse } from '../services/mentorService.js';
+import {
+  claimPassingAssessmentCompletion,
+  claimQuestCompletion,
+  getActivityDate,
+  getCompletionDetails,
+  isActivityDate,
+  summarizeCompletions,
+} from '../services/activityService.js';
 import { 
   calculateLevel, 
   updateStreak, 
@@ -287,14 +295,30 @@ router.post('/plans/:id/schedule', async (req, res) => {
 router.post('/progress/complete-node', async (req, res) => {
   try {
     const { planId, nodeId, xpAward = 100 } = req.body;
+    const plan = await UserPlan.findOne({ id: planId, userId: DEFAULT_USER_ID });
+    if (!plan) {
+      return res.status(404).json({ success: false, error: 'Plan not found' });
+    }
+    const roadmap = await MasterRoadmap.findOne({ id: plan.masterRoadmapId });
+    const node = roadmap?.nodes?.find((item) => item.id === nodeId);
+    if (!node) {
+      return res.status(404).json({ success: false, error: 'Node not found' });
+    }
+
     let progress = await UserProgress.findOne({ userId: DEFAULT_USER_ID, planId });
     if (!progress) {
       return res.status(404).json({ success: false, error: 'Progress record not found' });
     }
 
-    const wasCompleted = progress.completedNodeIds.includes(nodeId);
-    if (!wasCompleted) {
-      progress.completedNodeIds.push(nodeId);
+    const claimedProgress = await claimQuestCompletion(UserProgress, {
+      userId: DEFAULT_USER_ID,
+      planId,
+      nodeId,
+      nodeTitle: node.title,
+      roadmapName: plan.canonicalGoal,
+    });
+    if (claimedProgress) {
+      progress = claimedProgress;
       progress.xp += Number(xpAward);
       
       // Update level
@@ -312,29 +336,24 @@ router.post('/progress/complete-node', async (req, res) => {
 
       await progress.save();
 
-      // Update current quest in UserPlan to next available
-      const plan = await UserPlan.findOne({ id: planId });
-      if (plan) {
-        const masterRoadmap = await MasterRoadmap.findOne({ id: plan.masterRoadmapId });
-        if (masterRoadmap) {
-          const nextNode = masterRoadmap.nodes.find(n => !progress.completedNodeIds.includes(n.id));
-          if (nextNode) {
-            plan.currentQuestId = nextNode.id;
-            await plan.save();
-          }
-        }
+      // Update current quest in UserPlan to next available.
+      const nextNode = roadmap.nodes.find((item) => !progress.completedNodeIds.includes(item.id));
+      if (nextNode) {
+        plan.currentQuestId = nextNode.id;
+        await plan.save();
       }
 
       return res.json({
         success: true,
         alreadyCompleted: false,
-        earnedXP: xpAward,
+        earnedXP: Number(xpAward),
         progress,
         newAchievements,
         levelInfo,
       });
     }
 
+    progress = await UserProgress.findOne({ userId: DEFAULT_USER_ID, planId });
     res.json({ success: true, alreadyCompleted: true, progress });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -432,8 +451,7 @@ router.post('/assessments/submit', async (req, res) => {
 
     const earnedXP = passed ? (node.xp || 100) : 25;
 
-    // Record attempt
-    progress.assessmentAttempts.push({
+    const assessmentAttempt = {
       nodeId,
       passed,
       score: correctCount,
@@ -442,11 +460,18 @@ router.post('/assessments/submit', async (req, res) => {
       feedback: passed ? 'Excellently executed!' : 'Review the recommended hints and retry to earn full XP.',
       earnedXP,
       attemptedAt: new Date(),
-    });
+    };
 
     if (passed) {
       if (!progress.completedNodeIds.includes(nodeId)) {
-        progress.completedNodeIds.push(nodeId);
+        const completedProgress = await claimPassingAssessmentCompletion(UserProgress, {
+          userId: DEFAULT_USER_ID,
+          planId,
+          nodeId,
+          nodeTitle: node.title,
+          roadmapName: plan.canonicalGoal,
+        }, passed);
+        progress = completedProgress || await UserProgress.findOne({ userId: DEFAULT_USER_ID, planId });
       }
       if (!progress.verifiedNodeIds.includes(nodeId)) {
         progress.verifiedNodeIds.push(nodeId);
@@ -455,6 +480,8 @@ router.post('/assessments/submit', async (req, res) => {
       const levelInfo = calculateLevel(progress.xp);
       progress.level = levelInfo.level;
     }
+
+    progress.assessmentAttempts.push(assessmentAttempt);
 
     // Check achievements
     const newAchievements = checkNewAchievements(progress, 'assessment', {
@@ -479,6 +506,32 @@ router.post('/assessments/submit', async (req, res) => {
       progress,
       newAchievements,
     });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get('/activity', async (_req, res) => {
+  try {
+    const records = await UserProgress.find({ userId: DEFAULT_USER_ID }).select('completionEvents');
+    res.json({
+      success: true,
+      activity: summarizeCompletions(records),
+      endDate: getActivityDate(),
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get('/activity/:date', async (req, res) => {
+  try {
+    const { date } = req.params;
+    if (!isActivityDate(date)) {
+      return res.status(400).json({ success: false, error: 'Date must use YYYY-MM-DD format' });
+    }
+    const records = await UserProgress.find({ userId: DEFAULT_USER_ID }).select('completionEvents');
+    res.json({ success: true, completions: getCompletionDetails(records, date) });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

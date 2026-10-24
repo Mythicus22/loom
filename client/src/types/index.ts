@@ -161,6 +161,23 @@ export interface UserProgress {
   dailyQuests: DailyQuest[];
 }
 
+export interface QuestActivityDay {
+  date: string;
+  count: number;
+}
+
+export interface QuestActivityResponse {
+  activity: QuestActivityDay[];
+  endDate: string;
+}
+
+export interface QuestCompletionDetail {
+  nodeId: string;
+  nodeTitle: string;
+  roadmapName: string;
+  completedAt: string;
+}
+
 export interface LevelInfo {
   level: number;
   title: string;
