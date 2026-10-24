@@ -2,17 +2,13 @@ import React from 'react';
 import { 
   Compass, 
   Map, 
-  BookOpen, 
   LayoutDashboard, 
-  Sparkles, 
-  Zap, 
-  Flame, 
-  ShieldCheck 
+  Flame
 } from 'lucide-react';
 
 interface NavbarProps {
-  currentTab: 'home' | 'roadmap' | 'popular' | 'dashboard';
-  onSelectTab: (tab: 'home' | 'roadmap' | 'popular' | 'dashboard') => void;
+  currentTab: 'home' | 'roadmap' | 'dashboard';
+  onSelectTab: (tab: 'home' | 'roadmap' | 'dashboard') => void;
   hasActiveRoadmap: boolean;
   activeRoadmapTitle?: string;
   xp: number;
@@ -58,7 +54,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Focused Clean Navigation Links: Popular Roadmaps & Dashboard */}
+        {/* Focused navigation links */}
         <nav className="flex items-center gap-2 text-xs sm:text-sm font-semibold">
           
           {/* Active Roadmap Pill (Contextual when a roadmap is loaded) */}
@@ -75,19 +71,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span>Roadmap</span>
             </button>
           )}
-
-          {/* Popular Roadmaps */}
-          <button
-            onClick={() => onSelectTab('popular')}
-            className={`px-3.5 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer ${
-              currentTab === 'popular'
-                ? 'bg-violet-accent/20 text-violet-300 border border-violet-500/50 shadow-glow-violet/20 font-bold'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-dark-hover'
-            }`}
-          >
-            <BookOpen className="w-4 h-4 text-indigo-400" />
-            <span>Popular Roadmaps</span>
-          </button>
 
           {/* Dashboard */}
           <button

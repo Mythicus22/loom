@@ -37,7 +37,7 @@ interface DashboardPageProps {
   progress: UserProgress;
   levelInfo: LevelInfo;
   onResumeRoadmap: () => void;
-  onExploreRoadmaps: () => void;
+  onExploreHome: () => void;
   onSelectPlan: (planId: string) => void;
   onUpdateProgress: (progress: UserProgress) => void;
   onResetDemo: () => void;
@@ -49,7 +49,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   progress,
   levelInfo,
   onResumeRoadmap,
-  onExploreRoadmaps,
+  onExploreHome,
   onSelectPlan,
   onUpdateProgress,
   onResetDemo,
@@ -314,10 +314,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="flex items-center justify-between">
             <h3 className="text-base font-bold text-white">Your Saved Roadmaps</h3>
             <button
-              onClick={onExploreRoadmaps}
+              onClick={onExploreHome}
               className="text-xs text-cyan-accent hover:underline flex items-center gap-1 cursor-pointer"
             >
-              <span>Explore Master Roadmap Library</span>
+              <span>See demo roadmaps on the home page</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>

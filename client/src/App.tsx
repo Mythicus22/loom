@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { AIHomeChat } from './components/AIHomeChat';
 import { RoadmapViewPage } from './pages/RoadmapViewPage';
-import { ExplorePage } from './pages/ExplorePage';
 import { DashboardPage } from './pages/DashboardPage';
 import { MasterRoadmap, UserPlan, UserProgress, LearnerProfile, LevelInfo } from './types';
 import { 
@@ -16,8 +15,8 @@ import {
 } from './services/api';
 
 export function App() {
-  // Simplified executive tabs: home, roadmap, popular, dashboard
-  const [currentTab, setCurrentTab] = useState<'home' | 'roadmap' | 'popular' | 'dashboard'>('home');
+  // Simplified executive tabs: home, roadmap, dashboard
+  const [currentTab, setCurrentTab] = useState<'home' | 'roadmap' | 'dashboard'>('home');
   const [activeRoadmap, setActiveRoadmap] = useState<MasterRoadmap | null>(null);
   const [activePlan, setActivePlan] = useState<UserPlan | null>(null);
   const [progress, setProgress] = useState<UserProgress>({
@@ -294,21 +293,6 @@ export function App() {
           />
         )}
 
-        {/* Popular Master Roadmaps */}
-        {currentTab === 'popular' && (
-          <ExplorePage
-            onStartRoadmap={(goal) => {
-              handleGenerateRoadmap(goal, {
-                experienceLevel: 'Beginner',
-                hoursPerWeek: 10,
-                targetWeeks: 8,
-                preferredFormat: 'mixed',
-                desiredOutcome: 'projects',
-              });
-            }}
-          />
-        )}
-
         {/* Consolidated Dashboard: Progress, Saved Roadmaps, Streaks, Daily Quests, Trophies & Preferences */}
         {currentTab === 'dashboard' && (
           <DashboardPage
@@ -317,7 +301,7 @@ export function App() {
             progress={progress}
             levelInfo={levelInfo}
             onResumeRoadmap={() => setCurrentTab('roadmap')}
-            onExploreRoadmaps={() => setCurrentTab('popular')}
+            onExploreHome={() => setCurrentTab('home')}
             onSelectPlan={handleSelectPlan}
             onUpdateProgress={setProgress}
             onResetDemo={handleResetDemo}
