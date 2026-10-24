@@ -437,11 +437,11 @@ export const AIHomeChat: React.FC<AIHomeChatProps> = ({
                 <div
                   className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                     msg.sender === 'user'
-                      ? 'bg-violet-600 text-white font-medium rounded-tr-none shadow-glow-violet/20'
+                      ? 'home-user-bubble bg-[#EDEDED] text-[#111113] font-semibold rounded-tr-none shadow-sm'
                       : 'bg-dark-card border border-dark-border text-slate-200 rounded-tl-none'
                   }`}
                 >
-                  <p>{msg.text}</p>
+                  <p className={msg.sender === 'user' ? 'text-[#111113] font-semibold' : ''}>{msg.text}</p>
 
                   {/* Options chips if this is the active question */}
                   {msg.options && msg.questionIndex === currentQuestionIdx && (

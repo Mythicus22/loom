@@ -3,6 +3,7 @@ import { Navbar } from './components/Navbar';
 import { AIHomeChat } from './components/AIHomeChat';
 import { RoadmapViewPage } from './pages/RoadmapViewPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { CommunityPage } from './pages/CommunityPage';
 import { MentorDrawer } from './components/MentorDrawer';
 import { MasterRoadmap, UserPlan, UserProgress, LearnerProfile, LevelInfo, RoadmapNode } from './types';
 import { Bot, MessageSquare } from 'lucide-react';
@@ -17,8 +18,8 @@ import {
 } from './services/api';
 
 export function App() {
-  // Simplified executive tabs: home, roadmap, dashboard
-  const [currentTab, setCurrentTab] = useState<'home' | 'roadmap' | 'dashboard'>('home');
+  // Executive tabs: home, roadmap, dashboard, community
+  const [currentTab, setCurrentTab] = useState<'home' | 'roadmap' | 'dashboard' | 'community'>('home');
   const [activeRoadmap, setActiveRoadmap] = useState<MasterRoadmap | null>(null);
   const [activePlan, setActivePlan] = useState<UserPlan | null>(null);
   const [isMentorOpen, setIsMentorOpen] = useState(false);
@@ -315,6 +316,14 @@ export function App() {
             onSelectPlan={handleSelectPlan}
             onUpdateProgress={setProgress}
             onResetDemo={handleResetDemo}
+          />
+        )}
+
+        {/* Community Chat & Guilds Page */}
+        {currentTab === 'community' && (
+          <CommunityPage
+            activeRoadmap={activeRoadmap}
+            onOpenRoadmap={() => setCurrentTab('roadmap')}
           />
         )}
       </main>

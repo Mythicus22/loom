@@ -130,19 +130,6 @@ export const RoadmapViewPage: React.FC<RoadmapViewPageProps> = ({
                 ></div>
               </div>
             </div>
-
-            {/* Launch AI Mentor button */}
-            <button
-              onClick={onToggleMentor}
-              className={`px-3.5 py-2 rounded-xl text-white font-bold text-xs flex items-center gap-2 shadow-glow-violet transition-all cursor-pointer ${
-                isMentorOpen
-                  ? 'bg-gradient-to-r from-violet-600 to-cyan-600 ring-2 ring-cyan-400'
-                  : 'bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500'
-              }`}
-            >
-              <Bot className="w-4 h-4 text-cyan-accent" />
-              <span className="hidden sm:inline">AI Mentor</span>
-            </button>
           </div>
 
         </div>

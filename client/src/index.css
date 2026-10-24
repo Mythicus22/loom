@@ -461,13 +461,31 @@ body {
   border-color: rgba(235, 235, 235, .1);
 }
 
+.home-user-bubble,
+.home-user-bubble p,
+.home-theme .home-onboarding .home-user-bubble,
+.home-theme .home-onboarding .home-user-bubble p {
+  color: #111113 !important;
+  background-color: #EDEDED !important;
+}
+
 .home-theme .home-onboarding .bg-violet-600,
-.home-theme .home-onboarding [class*="bg-violet-600"] {
+.home-theme .home-onboarding [class*="bg-violet-600"],
+.home-theme .home-onboarding [class*="bg-white"],
+.home-theme .home-onboarding [class*="bg-[#EDEDED]"],
+.home-theme .home-onboarding [class*="bg-slate-100"] {
+  color: #111113 !important;
+  background-color: #EDEDED !important;
+}
+
+.home-theme .home-onboarding .bg-violet-600 *,
+.home-theme .home-onboarding [class*="bg-violet-600"] *,
+.home-theme .home-onboarding .bg-violet-600 p,
+.home-theme .home-onboarding [class*="bg-violet-600"] p {
   color: #111113 !important;
 }
 
-.home-theme .home-onboarding [class*="hover:text-white"]:hover,
-.home-theme .home-onboarding .text-white {
+.home-theme .home-onboarding [class*="hover:text-white"]:hover {
   color: #EBEBEB !important;
 }
 

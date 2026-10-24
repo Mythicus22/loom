@@ -3,12 +3,13 @@ import {
   Compass, 
   Map, 
   LayoutDashboard, 
-  Flame
+  Flame,
+  Users
 } from 'lucide-react';
 
 interface NavbarProps {
-  currentTab: 'home' | 'roadmap' | 'dashboard';
-  onSelectTab: (tab: 'home' | 'roadmap' | 'dashboard') => void;
+  currentTab: 'home' | 'roadmap' | 'dashboard' | 'community';
+  onSelectTab: (tab: 'home' | 'roadmap' | 'dashboard' | 'community') => void;
   hasActiveRoadmap: boolean;
   activeRoadmapTitle?: string;
   xp: number;
@@ -83,6 +84,19 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <LayoutDashboard className="w-4 h-4 text-cyan-accent" />
             <span>Dashboard</span>
+          </button>
+
+          {/* Community */}
+          <button
+            onClick={() => onSelectTab('community')}
+            className={`px-3.5 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer ${
+              currentTab === 'community'
+                ? 'bg-violet-accent/20 text-violet-300 border border-violet-500/50 shadow-glow-violet/20 font-bold'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-dark-hover'
+            }`}
+          >
+            <Users className="w-4 h-4 text-cyan-accent" />
+            <span>Community</span>
           </button>
 
         </nav>
