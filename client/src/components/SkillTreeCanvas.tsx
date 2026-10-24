@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { 
   CheckCircle2, 
   Lock, 
@@ -10,9 +10,10 @@ import {
   ChevronRight, 
   ListTree, 
   GitFork, 
-  Award, 
-  HelpCircle,
-  Eye
+  Eye,
+  GripHorizontal,
+  RotateCcw,
+  Move
 } from 'lucide-react';
 import { MasterRoadmap, RoadmapNode, UserPlan, UserProgress } from '../types';
 
@@ -23,6 +24,9 @@ interface SkillTreeCanvasProps {
   selectedNodeId: string | null;
   onSelectNode: (node: RoadmapNode) => void;
 }
+
+const NODE_WIDTH = 230;
+const NODE_HEIGHT = 100;
 
 export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
   roadmap,
@@ -35,7 +39,42 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
   const [activeStageFilter, setActiveStageFilter] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'canvas' | 'vertical'>('canvas');
 
+  // Dynamic node positions state for dragging & stretching arrows
+  const [nodePositions, setNodePositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [isDraggingNodeId, setIsDraggingNodeId] = useState<string | null>(null);
+
   const containerRef = useRef<HTMLDivElement>(null);
+  const dragInfoRef = useRef<{
+    nodeId: string;
+    startMouseX: number;
+    startMouseY: number;
+    startNodeX: number;
+    startNodeY: number;
+    hasMoved: boolean;
+  } | null>(null);
+
+  // Initialize or reset node positions when roadmap changes
+  useEffect(() => {
+    const initialPos: Record<string, { x: number; y: number }> = {};
+    roadmap.nodes.forEach((n, idx) => {
+      // Default to node.position or compute nice staggered fallback
+      initialPos[n.id] = {
+        x: n.position?.x ?? (100 + (idx % 4) * 280),
+        y: n.position?.y ?? (120 + Math.floor(idx / 4) * 160),
+      };
+    });
+    setNodePositions(initialPos);
+  }, [roadmap.id, roadmap.nodes]);
+
+  // Reset positions to default
+  const handleResetPositions = () => {
+    const defaultPos: Record<string, { x: number; y: number }> = {};
+    roadmap.nodes.forEach(n => {
+      defaultPos[n.id] = { x: n.position.x, y: n.position.y };
+    });
+    setNodePositions(defaultPos);
+    setZoom(1);
+  };
 
   // Completed & verified nodes
   const completedSet = useMemo(() => new Set(progress.completedNodeIds || []), [progress.completedNodeIds]);
@@ -45,9 +84,8 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
   const currentQuestId = plan.currentQuestId || roadmap.nodes[0]?.id;
 
   // Determine node states
-  const getNodeState = (node: RoadmapNode) => {
+  const getNodeState = useCallback((node: RoadmapNode) => {
     const isCompleted = completedSet.has(node.id);
-    const isVerified = verifiedSet.has(node.id);
     const isCurrent = node.id === currentQuestId;
     
     // Check if all prerequisites completed
@@ -58,9 +96,9 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
     if (isCurrent) return 'current';
     if (allPrereqsMet || prereqs.length === 0) return 'available';
     return 'locked';
-  };
+  }, [completedSet, currentQuestId]);
 
-  // Node position map
+  // Node lookup map
   const nodeMap = useMemo(() => {
     const map = new Map<string, RoadmapNode>();
     roadmap.nodes.forEach(n => map.set(n.id, n));
@@ -73,7 +111,60 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
     return roadmap.nodes.filter(n => n.stageId === activeStageFilter);
   }, [roadmap.nodes, activeStageFilter]);
 
-  // Generate SVG Bezier curve connections
+  // Drag handlers for moving nodes
+  const handleNodeMouseDown = (e: React.MouseEvent, node: RoadmapNode) => {
+    // Only handle primary left click
+    if (e.button !== 0) return;
+    e.stopPropagation();
+
+    const currentPos = nodePositions[node.id] || node.position;
+    dragInfoRef.current = {
+      nodeId: node.id,
+      startMouseX: e.clientX,
+      startMouseY: e.clientY,
+      startNodeX: currentPos.x,
+      startNodeY: currentPos.y,
+      hasMoved: false,
+    };
+    setIsDraggingNodeId(node.id);
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!dragInfoRef.current) return;
+      const { startMouseX, startMouseY, startNodeX, startNodeY } = dragInfoRef.current;
+      const dx = (moveEvent.clientX - startMouseX) / zoom;
+      const dy = (moveEvent.clientY - startMouseY) / zoom;
+
+      if (Math.hypot(dx, dy) > 4) {
+        dragInfoRef.current.hasMoved = true;
+      }
+
+      setNodePositions(prev => ({
+        ...prev,
+        [node.id]: {
+          x: Math.max(20, Math.round(startNodeX + dx)),
+          y: Math.max(20, Math.round(startNodeY + dy)),
+        },
+      }));
+    };
+
+    const handleMouseUp = () => {
+      const info = dragInfoRef.current;
+      dragInfoRef.current = null;
+      setIsDraggingNodeId(null);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+
+      // If user merely clicked without moving, open node detail
+      if (info && !info.hasMoved) {
+        onSelectNode(node);
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
+
+  // Generate dynamic Bezier curves with arrows that stretch as nodes move
   const renderedConnections = useMemo(() => {
     const lines: Array<{
       id: string;
@@ -81,9 +172,9 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
       isOptional: boolean;
       isActive: boolean;
       isCompleted: boolean;
+      markerType: 'completed' | 'active' | 'default' | 'optional';
     }> = [];
 
-    // Derive edges from roadmap edges or prerequisites
     const edgesToDraw = (roadmap.edges && roadmap.edges.length > 0)
       ? roadmap.edges
       : roadmap.nodes.flatMap(target => 
@@ -100,19 +191,80 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
       const targetNode = nodeMap.get(edge.target);
 
       if (sourceNode && targetNode) {
-        // Node dimensions: 220px wide, 90px high
-        const startX = sourceNode.position.x + 220;
-        const startY = sourceNode.position.y + 45;
-        const endX = targetNode.position.x;
-        const endY = targetNode.position.y + 45;
-
-        // Smooth cubic Bezier control points
-        const deltaX = Math.max(40, (endX - startX) / 2);
-        const d = `M ${startX} ${startY} C ${startX + deltaX} ${startY}, ${endX - deltaX} ${endY}, ${endX} ${endY}`;
+        const posSource = nodePositions[sourceNode.id] || sourceNode.position;
+        const posTarget = nodePositions[targetNode.id] || targetNode.position;
 
         const isSourceCompleted = completedSet.has(sourceNode.id);
         const isTargetActive = targetNode.id === currentQuestId;
         const isBothCompleted = isSourceCompleted && completedSet.has(targetNode.id);
+
+        // Center points
+        const cxSource = posSource.x + NODE_WIDTH / 2;
+        const cySource = posSource.y + NODE_HEIGHT / 2;
+        const cxTarget = posTarget.x + NODE_WIDTH / 2;
+        const cyTarget = posTarget.y + NODE_HEIGHT / 2;
+
+        let startX: number;
+        let startY: number;
+        let endX: number;
+        let endY: number;
+        let cp1x: number;
+        let cp1y: number;
+        let cp2x: number;
+        let cp2y: number;
+
+        // Determine orientation relative to each other for professional connection ports
+        const dx = cxTarget - cxSource;
+        const dy = cyTarget - cySource;
+
+        if (Math.abs(dx) >= Math.abs(dy)) {
+          // Horizontal primary flow
+          if (dx > 0) {
+            // Source is left of Target
+            startX = posSource.x + NODE_WIDTH;
+            startY = cySource;
+            endX = posTarget.x - 7; // offset slightly for arrow head
+            endY = cyTarget;
+          } else {
+            // Source is right of Target
+            startX = posSource.x;
+            startY = cySource;
+            endX = posTarget.x + NODE_WIDTH + 7;
+            endY = cyTarget;
+          }
+          const deltaX = Math.max(50, Math.abs(endX - startX) * 0.45);
+          cp1x = dx > 0 ? startX + deltaX : startX - deltaX;
+          cp1y = startY;
+          cp2x = dx > 0 ? endX - deltaX : endX + deltaX;
+          cp2y = endY;
+        } else {
+          // Vertical primary flow
+          if (dy > 0) {
+            // Source is above Target
+            startX = cxSource;
+            startY = posSource.y + NODE_HEIGHT;
+            endX = cxTarget;
+            endY = posTarget.y - 7;
+          } else {
+            // Source is below Target
+            startX = cxSource;
+            startY = posSource.y;
+            endX = cxTarget;
+            endY = posTarget.y + NODE_HEIGHT + 7;
+          }
+          const deltaY = Math.max(40, Math.abs(endY - startY) * 0.45);
+          cp1x = startX;
+          cp1y = dy > 0 ? startY + deltaY : startY - deltaY;
+          cp2x = endX;
+          cp2y = dy > 0 ? endY - deltaY : endY + deltaY;
+        }
+
+        const d = `M ${startX} ${startY} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${endX} ${endY}`;
+
+        let markerType: 'completed' | 'active' | 'default' | 'optional' = 'default';
+        if (isBothCompleted) markerType = 'completed';
+        else if (isTargetActive) markerType = 'active';
+        else if (edge.isOptional) markerType = 'optional';
 
         lines.push({
           id: edge.id || `line-${idx}`,
@@ -120,18 +272,19 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
           isOptional: Boolean(edge.isOptional),
           isActive: isSourceCompleted && isTargetActive,
           isCompleted: isBothCompleted,
+          markerType,
         });
       }
     });
 
     return lines;
-  }, [roadmap.edges, roadmap.nodes, nodeMap, completedSet, currentQuestId]);
+  }, [roadmap.edges, roadmap.nodes, nodeMap, nodePositions, completedSet, currentQuestId]);
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-dark-bg relative select-none">
       
       {/* Top Controls Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b border-dark-border bg-dark-panel/60 backdrop-blur-md z-10">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-2.5 border-b border-dark-border bg-dark-panel/85 backdrop-blur-md z-10">
         
         {/* Stage Filter Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 max-w-full text-xs">
@@ -139,7 +292,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
             onClick={() => setActiveStageFilter('all')}
             className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer shrink-0 ${
               activeStageFilter === 'all'
-                ? 'bg-violet-accent/20 text-violet-300 border border-violet-500/40 shadow-glow-violet/20'
+                ? 'bg-violet-accent/20 text-violet-300 border border-violet-500/40 shadow-glow-violet/20 font-bold'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-dark-hover'
             }`}
           >
@@ -152,7 +305,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
               onClick={() => setActiveStageFilter(stage.id)}
               className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
                 activeStageFilter === stage.id
-                  ? 'bg-cyan-950/40 text-cyan-300 border border-cyan-500/40 shadow-glow-cyan/20'
+                  ? 'bg-cyan-950/50 text-cyan-300 border border-cyan-500/40 shadow-glow-cyan/20 font-bold'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-dark-hover'
               }`}
             >
@@ -162,23 +315,40 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
           ))}
         </div>
 
-        {/* View Mode & Zoom Controls */}
+        {/* View Mode, Layout Reset & Zoom Controls */}
         <div className="flex items-center gap-2">
+          
+          {/* Draggable hint indicator */}
+          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-dark-card border border-dark-border text-[11px] text-slate-400">
+            <Move className="w-3 h-3 text-cyan-accent" />
+            <span>Drag nodes freely</span>
+          </div>
+
+          {/* Reset positions */}
+          <button
+            onClick={handleResetPositions}
+            className="p-1.5 rounded-lg bg-dark-card border border-dark-border hover:border-slate-500 text-slate-400 hover:text-white text-xs flex items-center gap-1 transition-colors cursor-pointer"
+            title="Reset Nodes to Default Layout"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline text-[11px]">Reset Layout</span>
+          </button>
+
           {/* Switch View Mode */}
           <div className="flex items-center rounded-lg bg-dark-card border border-dark-border p-0.5 text-xs">
             <button
               onClick={() => setViewMode('canvas')}
-              className={`px-2.5 py-1 rounded-md flex items-center gap-1 transition-all ${
+              className={`px-2.5 py-1 rounded-md flex items-center gap-1 transition-all cursor-pointer ${
                 viewMode === 'canvas' ? 'bg-violet-600 text-white font-semibold' : 'text-slate-400 hover:text-white'
               }`}
-              title="RPG Skill Tree Canvas"
+              title="Interactive RPG Skill Tree Graph"
             >
               <GitFork className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Graph</span>
             </button>
             <button
               onClick={() => setViewMode('vertical')}
-              className={`px-2.5 py-1 rounded-md flex items-center gap-1 transition-all ${
+              className={`px-2.5 py-1 rounded-md flex items-center gap-1 transition-all cursor-pointer ${
                 viewMode === 'vertical' ? 'bg-violet-600 text-white font-semibold' : 'text-slate-400 hover:text-white'
               }`}
               title="Vertical Quest Stream"
@@ -188,12 +358,12 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
             </button>
           </div>
 
-          {/* Zoom controls (only in canvas mode) */}
+          {/* Zoom controls */}
           {viewMode === 'canvas' && (
             <div className="flex items-center rounded-lg bg-dark-card border border-dark-border p-0.5 text-xs">
               <button
-                onClick={() => setZoom(z => Math.max(0.6, z - 0.15))}
-                className="p-1.5 text-slate-400 hover:text-white transition-colors"
+                onClick={() => setZoom(z => Math.max(0.5, Number((z - 0.15).toFixed(2))))}
+                className="p-1.5 text-slate-400 hover:text-white transition-colors cursor-pointer"
                 title="Zoom Out"
               >
                 <ZoomOut className="w-3.5 h-3.5" />
@@ -202,16 +372,16 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
                 {Math.round(zoom * 100)}%
               </span>
               <button
-                onClick={() => setZoom(z => Math.min(1.5, z + 0.15))}
-                className="p-1.5 text-slate-400 hover:text-white transition-colors"
+                onClick={() => setZoom(z => Math.min(1.6, Number((z + 0.15).toFixed(2))))}
+                className="p-1.5 text-slate-400 hover:text-white transition-colors cursor-pointer"
                 title="Zoom In"
               >
                 <ZoomIn className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => setZoom(1)}
-                className="p-1.5 text-slate-400 hover:text-white transition-colors ml-0.5"
-                title="Fit to Screen"
+                className="p-1.5 text-slate-400 hover:text-white transition-colors ml-0.5 cursor-pointer"
+                title="Reset Zoom to 100%"
               >
                 <Maximize2 className="w-3.5 h-3.5" />
               </button>
@@ -222,28 +392,78 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
       </div>
 
       {/* -------------------------------------------------------------------- */}
-      {/* 1. Canvas Graph View (RPG Skill Tree with connected paths) */}
+      {/* 1. Canvas Graph View (Draggable RPG Skill Tree with Dynamic Arrows) */}
       {/* -------------------------------------------------------------------- */}
       {viewMode === 'canvas' && (
         <div 
           ref={containerRef}
-          className="flex-1 w-full h-full overflow-auto quest-grid-pattern relative p-8 cursor-grab active:cursor-grabbing"
+          className="flex-1 w-full h-full overflow-auto quest-grid-pattern relative p-8"
         >
           <div 
             style={{ 
               transform: `scale(${zoom})`, 
               transformOrigin: '0 0',
-              minWidth: '1600px',
-              minHeight: '650px',
+              minWidth: '1800px',
+              minHeight: '800px',
             }}
-            className="relative transition-transform duration-150 ease-out"
+            className="relative"
           >
-            {/* SVG Connecting Bezier Paths */}
+            {/* SVG Connecting Curves with Directional Arrowheads */}
             <svg 
-              className="absolute inset-0 pointer-events-none w-full h-full"
+              className="absolute inset-0 pointer-events-none w-full h-full overflow-visible"
               style={{ zIndex: 1 }}
             >
               <defs>
+                {/* Arrowhead Markers */}
+                <marker 
+                  id="arrow-completed" 
+                  viewBox="0 0 10 10" 
+                  refX="7" 
+                  refY="5" 
+                  markerWidth="6" 
+                  markerHeight="6" 
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10B981" />
+                </marker>
+
+                <marker 
+                  id="arrow-active" 
+                  viewBox="0 0 10 10" 
+                  refX="7" 
+                  refY="5" 
+                  markerWidth="6" 
+                  markerHeight="6" 
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#8B5CF6" />
+                </marker>
+
+                <marker 
+                  id="arrow-default" 
+                  viewBox="0 0 10 10" 
+                  refX="7" 
+                  refY="5" 
+                  markerWidth="6" 
+                  markerHeight="6" 
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#4B5563" />
+                </marker>
+
+                <marker 
+                  id="arrow-optional" 
+                  viewBox="0 0 10 10" 
+                  refX="7" 
+                  refY="5" 
+                  markerWidth="6" 
+                  markerHeight="6" 
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#A855F7" />
+                </marker>
+
+                {/* Linear Gradients for Paths */}
                 <linearGradient id="activeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                   <stop offset="0%" stopColor="#10B981" />
                   <stop offset="100%" stopColor="#8B5CF6" />
@@ -256,7 +476,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
 
               {renderedConnections.map(line => (
                 <g key={line.id}>
-                  {/* Subtle glow layer */}
+                  {/* Subtle Glow Layer */}
                   <path
                     d={line.d}
                     fill="none"
@@ -265,12 +485,13 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
                         ? 'rgba(16, 185, 129, 0.35)'
                         : line.isActive
                         ? 'rgba(139, 92, 246, 0.45)'
-                        : 'rgba(255, 255, 255, 0.08)'
+                        : 'rgba(255, 255, 255, 0.04)'
                     }
-                    strokeWidth={line.isActive ? 5 : 3}
+                    strokeWidth={line.isActive ? 5 : 3.5}
                     strokeDasharray={line.isOptional ? '6 4' : undefined}
                   />
-                  {/* Foreground stroke */}
+
+                  {/* Main Stroke with Directional Arrowhead markerEnd */}
                   <path
                     d={line.d}
                     fill="none"
@@ -279,49 +500,57 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
                         ? 'url(#completedGradient)'
                         : line.isActive
                         ? 'url(#activeGradient)'
-                        : '#232736'
+                        : '#374151'
                     }
                     strokeWidth={line.isActive ? 2.5 : 2}
                     strokeDasharray={line.isOptional ? '6 4' : undefined}
+                    markerEnd={`url(#arrow-${line.markerType})`}
                   />
                 </g>
               ))}
             </svg>
 
-            {/* Nodes on Canvas */}
+            {/* Draggable Quest Nodes */}
             <div className="relative" style={{ zIndex: 2 }}>
               {displayNodes.map(node => {
+                const pos = nodePositions[node.id] || node.position;
                 const state = getNodeState(node);
                 const isSelected = node.id === selectedNodeId;
                 const isCurrent = state === 'current';
                 const isCompleted = state === 'completed';
                 const isLocked = state === 'locked';
+                const isDragging = isDraggingNodeId === node.id;
 
                 return (
                   <div
                     key={node.id}
-                    onClick={() => onSelectNode(node)}
+                    onMouseDown={e => handleNodeMouseDown(e, node)}
                     style={{
-                      left: `${node.position.x}px`,
-                      top: `${node.position.y}px`,
-                      width: '220px',
+                      left: `${pos.x}px`,
+                      top: `${pos.y}px`,
+                      width: `${NODE_WIDTH}px`,
+                      height: `${NODE_HEIGHT}px`,
                     }}
-                    className={`absolute p-3.5 rounded-2xl cursor-pointer select-none transition-all duration-300 ${
+                    className={`absolute p-3 rounded-2xl select-none transition-shadow duration-200 group flex flex-col justify-between ${
+                      isDragging
+                        ? 'cursor-grabbing shadow-2xl ring-2 ring-cyan-400 z-30 scale-105 opacity-95'
+                        : 'cursor-grab hover:scale-[1.02] z-10'
+                    } ${
                       isSelected
-                        ? 'ring-2 ring-cyan-accent ring-offset-2 ring-offset-dark-bg scale-105 z-20'
-                        : 'hover:scale-[1.03] z-10'
+                        ? 'ring-2 ring-cyan-accent ring-offset-2 ring-offset-dark-bg z-20'
+                        : ''
                     } ${
                       isCurrent
-                        ? 'bg-gradient-to-b from-[#1E1B4B] to-[#11131A] border-2 border-violet-accent shadow-glow-violet active-quest-pulse'
+                        ? 'bg-gradient-to-b from-[#1E1B4B] via-[#151724] to-[#0E1017] border-2 border-violet-accent shadow-glow-violet active-quest-pulse'
                         : isCompleted
-                        ? 'bg-gradient-to-b from-[#064E3B]/40 to-[#11131A] border border-emerald-500/50 shadow-glow-emerald/20'
+                        ? 'bg-gradient-to-b from-[#064E3B]/40 via-[#151724] to-[#0E1017] border border-emerald-500/50 shadow-glow-emerald/20'
                         : isLocked
-                        ? 'bg-dark-panel/60 border border-dark-border opacity-65 grayscale hover:grayscale-0'
+                        ? 'bg-dark-panel/80 border border-dark-border opacity-70 grayscale hover:grayscale-0'
                         : 'bg-dark-card border border-dark-border hover:border-violet-500/50 shadow-lg'
                     }`}
                   >
-                    {/* Top Node Pill Header */}
-                    <div className="flex items-center justify-between mb-2">
+                    {/* Node Header Row: Level + Drag Handle + XP */}
+                    <div className="flex items-center justify-between">
                       <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${
                         isCurrent
                           ? 'bg-violet-600 text-white font-extrabold shadow-glow-violet'
@@ -334,51 +563,53 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
                         {isCurrent ? '⚡ Active Quest' : `Level ${node.level}`}
                       </span>
 
-                      <span className="text-[11px] font-mono font-semibold text-amber-400 flex items-center gap-0.5">
-                        <Zap className="w-3 h-3 fill-amber-400 text-amber-400" />
-                        {node.xp} XP
-                      </span>
+                      {/* Grip handle indicating Draggable */}
+                      <div className="flex items-center gap-1.5">
+                        <span title="Drag to move node">
+                          <GripHorizontal className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 transition-colors" />
+                        </span>
+                        <span className="text-[11px] font-mono font-semibold text-amber-400 flex items-center gap-0.5">
+                          <Zap className="w-3 h-3 fill-amber-400 text-amber-400" />
+                          {node.xp} XP
+                        </span>
+                      </div>
                     </div>
 
                     {/* Node Title & Subtitle */}
-                    <h4 className={`font-bold text-sm tracking-tight leading-snug line-clamp-2 ${
-                      isCurrent ? 'text-white' : isCompleted ? 'text-emerald-100' : 'text-slate-200'
-                    }`}>
-                      {node.title}
-                    </h4>
-                    
-                    {node.subtitle && (
-                      <p className="text-[11px] text-slate-400 mt-1 line-clamp-1">
-                        {node.subtitle}
-                      </p>
-                    )}
+                    <div>
+                      <h4 className={`font-bold text-xs tracking-tight leading-snug line-clamp-2 ${
+                        isCurrent ? 'text-white' : isCompleted ? 'text-emerald-100' : 'text-slate-200'
+                      }`}>
+                        {node.title}
+                      </h4>
+                    </div>
 
                     {/* Bottom Status Row */}
-                    <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-[11px]">
+                    <div className="pt-1.5 border-t border-white/5 flex items-center justify-between text-[10px]">
                       {isCompleted ? (
                         <div className="flex items-center gap-1 text-emerald-400 font-semibold">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <CheckCircle2 className="w-3 h-3" />
                           <span>Cleared</span>
                         </div>
                       ) : isCurrent ? (
                         <div className="flex items-center gap-1 text-violet-300 font-semibold animate-pulse">
-                          <Sparkles className="w-3.5 h-3.5 text-cyan-accent" />
+                          <Sparkles className="w-3 h-3 text-cyan-accent" />
                           <span>In Progress</span>
                         </div>
                       ) : isLocked ? (
                         <div className="flex items-center gap-1 text-slate-400">
-                          <Lock className="w-3.5 h-3.5" />
+                          <Lock className="w-3 h-3" />
                           <span>Locked</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-1 text-cyan-400">
-                          <Eye className="w-3.5 h-3.5" />
+                          <Eye className="w-3 h-3" />
                           <span>Unlocked</span>
                         </div>
                       )}
 
                       {node.isOptional && (
-                        <span className="text-[10px] text-purple-400 font-medium">
+                        <span className="text-[9px] text-purple-400 font-medium">
                           Optional
                         </span>
                       )}
@@ -394,7 +625,7 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
       )}
 
       {/* -------------------------------------------------------------------- */}
-      {/* 2. Vertical Stream List View (Mobile Optimized & Step-by-Step) */}
+      {/* 2. Vertical Stream List View (Sequential / Mobile friendly) */}
       {/* -------------------------------------------------------------------- */}
       {viewMode === 'vertical' && (
         <div className="flex-1 w-full overflow-y-auto p-4 sm:p-6 max-w-2xl mx-auto space-y-4">
@@ -496,8 +727,8 @@ export const SkillTreeCanvas: React.FC<SkillTreeCanvasProps> = ({
             <span>Locked</span>
           </span>
         </div>
-        <div className="hidden sm:block text-slate-500">
-          Click any node to view learning materials, code challenges & quizzes
+        <div className="text-slate-500 hidden sm:block">
+          💡 Click and drag any node to reposition — directional arrows stretch automatically
         </div>
       </div>
 

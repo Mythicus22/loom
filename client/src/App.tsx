@@ -3,10 +3,7 @@ import { Navbar } from './components/Navbar';
 import { AIHomeChat } from './components/AIHomeChat';
 import { RoadmapViewPage } from './pages/RoadmapViewPage';
 import { ExplorePage } from './pages/ExplorePage';
-import { MyJourneyPage } from './pages/MyJourneyPage';
-import { ProgressPage } from './pages/ProgressPage';
-import { ProfilePage } from './pages/ProfilePage';
-import { StreakAndGamificationModal } from './components/StreakAndGamificationModal';
+import { DashboardPage } from './pages/DashboardPage';
 import { MasterRoadmap, UserPlan, UserProgress, LearnerProfile, LevelInfo } from './types';
 import { 
   fetchActivePlan, 
@@ -19,7 +16,8 @@ import {
 } from './services/api';
 
 export function App() {
-  const [currentTab, setCurrentTab] = useState<'home' | 'roadmap' | 'explore' | 'journey' | 'progress' | 'profile'>('home');
+  // Simplified executive tabs: home, roadmap, popular, dashboard
+  const [currentTab, setCurrentTab] = useState<'home' | 'roadmap' | 'popular' | 'dashboard'>('home');
   const [activeRoadmap, setActiveRoadmap] = useState<MasterRoadmap | null>(null);
   const [activePlan, setActivePlan] = useState<UserPlan | null>(null);
   const [progress, setProgress] = useState<UserProgress>({
@@ -50,7 +48,6 @@ export function App() {
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState('');
-  const [isGamificationModalOpen, setIsGamificationModalOpen] = useState(false);
   const [bannerAlert, setBannerAlert] = useState<{ text: string; type: 'success' | 'info' } | null>(null);
 
   // Load initial active plan
@@ -102,10 +99,10 @@ export function App() {
     }
   };
 
-  // Generate roadmap through conversational flow
+  // Generate roadmap through conversational flow: Landing Page -> Roadmap
   const handleGenerateRoadmap = async (goal: string, profile: LearnerProfile) => {
     setIsGenerating(true);
-    setGenerationStep('Analyzing goal & semantic domain...');
+    setGenerationStep('Analyzing goal & classifying domain...');
 
     try {
       await new Promise(r => setTimeout(r, 600));
@@ -115,13 +112,13 @@ export function App() {
       
       await new Promise(r => setTimeout(r, 500));
       if (res.isReused) {
-        setGenerationStep(`Reusing Master Roadmap (${res.masterRoadmap.canonicalGoal}) & personalizing...`);
+        setGenerationStep(`Reusing Master Roadmap: ${res.masterRoadmap.canonicalGoal}`);
       } else {
-        setGenerationStep('Generating and validating new master roadmap for novel goal...');
+        setGenerationStep('Generating and validating new master roadmap...');
       }
 
       await new Promise(r => setTimeout(r, 600));
-      setGenerationStep('Finalizing quest graph & calculating timeline...');
+      setGenerationStep('Personalizing schedule & preparing interactive quest tree...');
 
       await new Promise(r => setTimeout(r, 400));
       setActiveRoadmap(res.masterRoadmap);
@@ -137,14 +134,14 @@ export function App() {
         });
       } else {
         setBannerAlert({
-          text: `✨ Brand new Master Roadmap generated, schema-validated & saved to database for "${res.masterRoadmap.canonicalGoal}"!`,
+          text: `✨ Brand new Master Roadmap generated, validated & saved to database for "${res.masterRoadmap.canonicalGoal}"!`,
           type: 'success',
         });
       }
 
       setTimeout(() => setBannerAlert(null), 6000);
 
-      // Transition to roadmap page
+      // Smooth direct transition into the interactive Roadmap page!
       setCurrentTab('roadmap');
     } catch (err: any) {
       console.error('Failed to generate roadmap:', err);
@@ -208,21 +205,7 @@ export function App() {
     }
   };
 
-  // Toggle streak freeze
-  const handleToggleStreakFreeze = async () => {
-    if (!activePlan) return;
-    try {
-      const isFrozen = await toggleStreakFreeze(activePlan.id);
-      setProgress(prev => ({
-        ...prev,
-        streakFrozen: isFrozen,
-      }));
-    } catch (err) {
-      console.error('Failed to toggle streak freeze:', err);
-    }
-  };
-
-  // Select another plan from My Journey
+  // Select another plan
   const handleSelectPlan = async (planId: string) => {
     try {
       await selectUserPlan(planId);
@@ -256,7 +239,7 @@ export function App() {
     });
     calculateLocalLevel(0);
     setBannerAlert({
-      text: 'Demo environment reset. You can now test a fresh AI chatbot onboarding flow!',
+      text: 'Demo session reset. Welcome back to the AI chatbot homepage!',
       type: 'info',
     });
     setTimeout(() => setBannerAlert(null), 4000);
@@ -265,15 +248,16 @@ export function App() {
   return (
     <div className="min-h-screen bg-dark-bg text-slate-100 flex flex-col font-sans">
       
-      {/* Global Navbar */}
+      {/* Upgraded Clean Navbar */}
       <Navbar
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
+        hasActiveRoadmap={Boolean(activeRoadmap && activePlan)}
+        activeRoadmapTitle={activeRoadmap?.canonicalGoal}
         xp={progress.xp}
         level={levelInfo.level}
         streakDays={progress.streakDays}
         streakFrozen={progress.streakFrozen}
-        onOpenGamificationModal={() => setIsGamificationModalOpen(true)}
       />
 
       {/* Floating System Notification Alert */}
@@ -289,8 +273,9 @@ export function App() {
         </div>
       )}
 
-      {/* Main Page Content */}
+      {/* Main Page Flow: Landing Page -> Roadmap -> Popular / Dashboard */}
       <main className="flex-1 flex flex-col">
+        {/* Main Landing Page: AI Chat Onboarding */}
         {currentTab === 'home' && (
           <AIHomeChat
             onGenerateRoadmap={handleGenerateRoadmap}
@@ -299,6 +284,7 @@ export function App() {
           />
         )}
 
+        {/* Central Roadmap Page: Interactive RPG Skill Tree with Draggable Nodes & Stretching Arrows */}
         {currentTab === 'roadmap' && (
           <RoadmapViewPage
             roadmap={activeRoadmap}
@@ -311,11 +297,10 @@ export function App() {
           />
         )}
 
-        {currentTab === 'explore' && (
+        {/* Popular Master Roadmaps */}
+        {currentTab === 'popular' && (
           <ExplorePage
             onStartRoadmap={(goal) => {
-              setCurrentTab('home');
-              // triggers generation or matching
               handleGenerateRoadmap(goal, {
                 experienceLevel: 'Beginner',
                 hoursPerWeek: 10,
@@ -327,45 +312,21 @@ export function App() {
           />
         )}
 
-        {currentTab === 'journey' && (
-          <MyJourneyPage
+        {/* Consolidated Dashboard: Progress, Saved Roadmaps, Streaks, Daily Quests, Trophies & Preferences */}
+        {currentTab === 'dashboard' && (
+          <DashboardPage
             activePlan={activePlan}
-            progress={progress}
-            onSelectPlan={handleSelectPlan}
-            onOpenRoadmap={() => setCurrentTab('roadmap')}
-          />
-        )}
-
-        {currentTab === 'progress' && (
-          <ProgressPage
-            roadmap={activeRoadmap}
-            plan={activePlan}
+            activeRoadmap={activeRoadmap}
             progress={progress}
             levelInfo={levelInfo}
-          />
-        )}
-
-        {currentTab === 'profile' && (
-          <ProfilePage
-            plan={activePlan}
-            onUpdateProfile={(updatedProfile) => {
-              if (activePlan) {
-                activePlan.learnerProfile = updatedProfile;
-              }
-            }}
+            onResumeRoadmap={() => setCurrentTab('roadmap')}
+            onExploreRoadmaps={() => setCurrentTab('popular')}
+            onSelectPlan={handleSelectPlan}
+            onUpdateProgress={setProgress}
             onResetDemo={handleResetDemo}
           />
         )}
       </main>
-
-      {/* Gamification, Streak & Levels Modal */}
-      <StreakAndGamificationModal
-        isOpen={isGamificationModalOpen}
-        onClose={() => setIsGamificationModalOpen(false)}
-        progress={progress}
-        levelInfo={levelInfo}
-        onToggleStreakFreeze={handleToggleStreakFreeze}
-      />
 
     </div>
   );
